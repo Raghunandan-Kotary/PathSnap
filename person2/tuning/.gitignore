@@ -1,0 +1,4 @@
+__pycache__/
+*.db
+# stand-in smoke studies are never committed
+smoke/

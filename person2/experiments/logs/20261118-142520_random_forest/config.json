@@ -1,0 +1,67 @@
+{
+  "run_id": "20261118-142520_random_forest",
+  "timestamp": "2026-11-18T14:38:51",
+  "smoke": false,
+  "tag": "",
+  "role": "baseline",
+  "model": "random_forest",
+  "family": "Tree ensemble (bagging)",
+  "params": {
+    "n_estimators": 100,
+    "max_depth": 12,
+    "class_weight": "balanced_subsample"
+  },
+  "calibration": null,
+  "threshold": 0.5,
+  "seed": 42,
+  "cv_folds": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "n_train_trips": 80,
+  "n_test_trips": 10,
+  "n_train_candidates": 2546809,
+  "n_test_candidates": 276962,
+  "feature_cols": [
+    "feat_dist_to_arc",
+    "feat_arc_length",
+    "feat_heading_diff",
+    "feat_speed",
+    "feat_time_gap"
+  ],
+  "label_stats": {
+    "student_test": {
+      "candidates": 276962,
+      "positive_rate": 0.06742441201320036,
+      "observations_with_candidates": 19160,
+      "mean_candidates_per_obs": 14.455219206680585,
+      "mean_positives_per_obs": 0.9746346555323591,
+      "obs_with_zero_positive": 0.025365344467640917,
+      "obs_with_one_positive": 0.9746346555323591,
+      "obs_with_2plus_positive": 0.0
+    },
+    "train": {
+      "candidates": 2546809,
+      "positive_rate": 0.07465970161091783,
+      "observations_with_candidates": 208417,
+      "mean_candidates_per_obs": 12.219775738063595,
+      "mean_positives_per_obs": 0.912324810356161,
+      "obs_with_zero_positive": 0.08767518964383904,
+      "obs_with_one_positive": 0.912324810356161,
+      "obs_with_2plus_positive": 0.0
+    }
+  },
+  "table_path": "experiments/team_table/candidates_features.parquet",
+  "table_sha1": "aac8420de10d14e8bb623907a15eef4211682420",
+  "versions": {
+    "python": "3.11.9",
+    "numpy": "2.4.6",
+    "pandas": "3.0.6",
+    "sklearn": "1.9.1",
+    "xgboost": "3.2.0",
+    "lightgbm": "4.7.0"
+  }
+}

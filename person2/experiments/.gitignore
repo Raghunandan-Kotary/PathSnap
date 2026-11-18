@@ -1,0 +1,7 @@
+__pycache__/
+# per-machine run index; experiments/compare.py rebuilds the table from the run folders
+logs/runs.csv
+# per-candidate probabilities are large and are shared with Person 3 outside git
+logs/*/*.parquet
+# model copies live in models/final; run-folder copies are not committed
+logs/*/model.joblib
