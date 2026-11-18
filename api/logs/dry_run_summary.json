@@ -2,91 +2,101 @@
   {
     "trip_id": "00000000",
     "status": "PASS",
-    "observations": 2503,
-    "top1_acc_pct": 18.82,
-    "continuity_pct": 87.01,
-    "server_time_ms": 4644.91,
-    "client_rtt_ms": 4674.41
+    "execution_mode": "viterbi_distance_emissions",
+    "observations": 179,
+    "top1_acc_pct": 0.56,
+    "continuity_pct": 96.52,
+    "server_time_ms": 22367.18,
+    "client_rtt_ms": 22398.59
   },
   {
     "trip_id": "00000007",
     "status": "PASS",
-    "observations": 1354,
-    "top1_acc_pct": 26.88,
-    "continuity_pct": 84.33,
-    "server_time_ms": 2045.66,
-    "client_rtt_ms": 2073.44
+    "execution_mode": "viterbi_distance_emissions",
+    "observations": 123,
+    "top1_acc_pct": 0.81,
+    "continuity_pct": 97.41,
+    "server_time_ms": 7561.06,
+    "client_rtt_ms": 7576.69
   },
   {
     "trip_id": "00000009",
     "status": "PASS",
-    "observations": 1049,
-    "top1_acc_pct": 50.81,
-    "continuity_pct": 63.74,
-    "server_time_ms": 3308.62,
-    "client_rtt_ms": 3332.0
+    "execution_mode": "viterbi_distance_emissions",
+    "observations": 429,
+    "top1_acc_pct": 0.0,
+    "continuity_pct": 75.29,
+    "server_time_ms": 55859.05,
+    "client_rtt_ms": 55895.8
   },
   {
     "trip_id": "00000040",
     "status": "PASS",
-    "observations": 2995,
-    "top1_acc_pct": 26.71,
-    "continuity_pct": 84.87,
-    "server_time_ms": 5577.76,
-    "client_rtt_ms": 5612.89
+    "execution_mode": "viterbi_distance_emissions",
+    "observations": 309,
+    "top1_acc_pct": 0.32,
+    "continuity_pct": 95.66,
+    "server_time_ms": 24395.62,
+    "client_rtt_ms": 24421.93
   },
   {
     "trip_id": "00000052",
     "status": "PASS",
-    "observations": 262,
-    "top1_acc_pct": 49.24,
-    "continuity_pct": 60.92,
-    "server_time_ms": 613.39,
-    "client_rtt_ms": 623.31
+    "execution_mode": "viterbi_distance_emissions",
+    "observations": 95,
+    "top1_acc_pct": 1.05,
+    "continuity_pct": 87.36,
+    "server_time_ms": 3414.01,
+    "client_rtt_ms": 3427.15
   },
   {
     "trip_id": "00000056",
     "status": "PASS",
-    "observations": 3958,
-    "top1_acc_pct": 64.81,
-    "continuity_pct": 65.13,
-    "server_time_ms": 8872.74,
-    "client_rtt_ms": 8939.33
+    "execution_mode": "viterbi_distance_emissions",
+    "observations": 1323,
+    "top1_acc_pct": 0.0,
+    "continuity_pct": 86.23,
+    "server_time_ms": 85899.85,
+    "client_rtt_ms": 85948.34
   },
   {
     "trip_id": "00000065",
     "status": "PASS",
-    "observations": 768,
-    "top1_acc_pct": 46.09,
-    "continuity_pct": 71.45,
-    "server_time_ms": 2214.85,
-    "client_rtt_ms": 2234.82
+    "execution_mode": "viterbi_distance_emissions",
+    "observations": 145,
+    "top1_acc_pct": 0.69,
+    "continuity_pct": 93.35,
+    "server_time_ms": 20152.98,
+    "client_rtt_ms": 20175.29
   },
   {
     "trip_id": "00000076",
     "status": "PASS",
-    "observations": 1486,
-    "top1_acc_pct": 32.77,
-    "continuity_pct": 66.06,
-    "server_time_ms": 6269.47,
-    "client_rtt_ms": 6335.14
+    "execution_mode": "viterbi_distance_emissions",
+    "observations": 374,
+    "top1_acc_pct": 0.27,
+    "continuity_pct": 84.92,
+    "server_time_ms": 86219.26,
+    "client_rtt_ms": 86253.07
   },
   {
     "trip_id": "00000077",
     "status": "PASS",
-    "observations": 3911,
-    "top1_acc_pct": 33.04,
-    "continuity_pct": 81.71,
-    "server_time_ms": 6814.73,
-    "client_rtt_ms": 6867.18
+    "execution_mode": "viterbi_distance_emissions",
+    "observations": 268,
+    "top1_acc_pct": 0.37,
+    "continuity_pct": 96.27,
+    "server_time_ms": 86680.59,
+    "client_rtt_ms": 86720.93
   },
   {
     "trip_id": "00000091",
     "status": "PASS",
-    "observations": 874,
-    "top1_acc_pct": 44.97,
-    "continuity_pct": 69.64,
-    "server_time_ms": 2399.27,
-    "client_rtt_ms": 2418.72
+    "execution_mode": "viterbi_distance_emissions",
+    "observations": 232,
+    "top1_acc_pct": 0.43,
+    "continuity_pct": 91.07,
+    "server_time_ms": 37457.04,
+    "client_rtt_ms": 37478.21
   }
 ]
