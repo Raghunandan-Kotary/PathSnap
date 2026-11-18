@@ -89,10 +89,10 @@ The difference between the pooled (8.24%) and per-trip (3.80%) miss rates is dri
 - **Trip `00000054`**: Contains 19,313 observations (the largest single trajectory in the dataset) with 9,856 misses (**51.03% miss rate**).
 - **Trip `00000033`**: Contains 5,844 observations with 3,075 misses (**52.62% miss rate**).
 
-In both trips, significant trajectory sections occur on unmapped roads, private access ways, or off-network paths where the true traversed road segment is $> 60\text{ m}$ away from the digitized road graph. Because Trip 54 is grouped into **Fold 0** of the 5-fold `GroupKFold` split, Fold 0 exhibits an elevated candidate miss rate of **26.2%**.
+In both trips, the GPS points are a median 139 meters (trip `00000054`) and 122 meters (trip `00000033`) away from the reference route (underlying cause not determined, but exceeding the 60 m candidate search radius). Because Trip 54 is grouped into **Fold 0** of the 5-fold `GroupKFold` split, Fold 0 exhibits an elevated candidate miss rate of **26.2%**.
 
 ### 4. Known Ground-Truth Limitation & Handling (Trips `00000054` and `00000033`)
-A critical finding from candidate generation audit is that for trips `00000054` and `00000033`, the reference `.route` sequence simply does not cover significant sections of the GPS trace (due to off-network driving, private roads, or truncated ground-truth logging). 
+A critical finding from the candidate generation audit is that for trips `00000054` and `00000033`, the reference `.route` sequence does not cover significant sections of the GPS trace (cause not determined). 
 
 **Methodological Limitation**:
 - Because the true traversed road segment is physically absent from the `.route` ground truth during these trace intervals, our sequential projection algorithm finds no matching route arc within the local search neighborhood and assigns `label = 0` to all generated candidates for that observation (creating all-negative candidate sets).
