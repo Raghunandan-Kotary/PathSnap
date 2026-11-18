@@ -459,17 +459,17 @@ Loading the model and decoder when the server starts takes 3.7 s. Building the m
 
 ## 7.5 API request log (Laptop 1)
 
-Command window of the API server while it receives prediction requests for evaluator trips 00000015 and 00000049 (each request is logged with trip ID, client, latency, accuracy and continuity). In this capture the UI ran on the same machine as the API, so the client address is 127.0.0.1; with the UI on Laptop 2, the client field shows Laptop 2's network address.
+Command window of the API server while it receives prediction requests for evaluator trips 00000015 and 00000049 (each request is logged with trip ID, client, latency, accuracy and continuity). The requests were sent over the local network from a second device (10.155.16.25) to the API on Laptop 1 (10.155.16.153), through the API's `/docs` page; the client field records the sending device's address.
 
 ![API server command window](../figures/api_cmd_log.png)
 
 Last entries of `api/logs/requests.log` from the run shown above:
 
 ```
-[2026-11-18 19:48:10] [INFO] [PathSnap] Loaded configuration: Host=0.0.0.0, Port=8000
-[2026-11-18 19:48:14] [INFO] [PathSnap] EVALUATOR_REQ | Trip: 00000015 | Client: 127.0.0.1 | Mode: model_plus_viterbi | Latency: 3948.42ms | Top-1 Acc: 78.68% | Continuity: 99.45%
-[2026-11-18 19:48:17] [INFO] [PathSnap] EVALUATOR_REQ | Trip: 00000049 | Client: 127.0.0.1 | Mode: model_plus_viterbi | Latency: 2283.13ms | Top-1 Acc: 93.75% | Continuity: 97.24%
-[2026-11-18 21:52:04] [INFO] [PathSnap] Loaded classifier model artifact from <repo>\person2\models\final\model.joblib
+[2026-11-18 22:19:52] [INFO] [PathSnap] PathSnap FastAPI Service started successfully on Laptop 1.
+[2026-11-18 22:19:52] [INFO] [PathSnap] Loaded configuration: Host=0.0.0.0, Port=8000
+[2026-11-18 22:23:38] [INFO] [PathSnap] EVALUATOR_REQ | Trip: 00000015 | Client: 10.155.16.25 | Mode: model_plus_viterbi | Latency: 3716.01ms | Top-1 Acc: 78.68% | Continuity: 99.45%
+[2026-11-18 22:24:28] [INFO] [PathSnap] EVALUATOR_REQ | Trip: 00000049 | Client: 10.155.16.25 | Mode: model_plus_viterbi | Latency: 2108.31ms | Top-1 Acc: 93.75% | Continuity: 97.24%
 ```
 
 # 8. Academic integrity and AI assistance
