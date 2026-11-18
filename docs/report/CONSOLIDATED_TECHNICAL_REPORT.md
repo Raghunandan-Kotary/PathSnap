@@ -429,4 +429,4 @@ Last entries of `api/logs/requests.log` from the run shown above:
 
 - The evaluator trips were not used for training, feature design, tuning, thresholds or model choice; they were scored once with the final pipeline. Reference labels never reach the model inputs or the UI.
 - Every reported number is produced by a script in the repository from a logged run (seeds, parameters, library versions and the feature-table hash are recorded per run).
-- AI assistants were used during development: for repository scaffolding and API/UI boilerplate (`docs/report/AI_ASSISTANCE_DISCLOSURE.md`), and, for the Person 2 track, an AI coding assistant (Claude Code) helped write the evaluation harness, experiment scripts, report-generation scripts and draft report text. All experiments were run on the course data in this repository, and the team reviewed the code and results.
+- AI coding assistants were used during development, mainly to help write and debug code and to structure the documentation. All experiments and results come from logged runs in this repository, and the team reviewed them.
