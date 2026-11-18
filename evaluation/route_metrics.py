@@ -1,52 +1,48 @@
 """
 Shared route-level evaluation metrics for PathSnap (Person 3).
 
-Used identically by Person 2's report tables and Person 4's API
-(`api/pipeline.py`), per docs/INTERFACES.md Interface 4.1, so the numbers
-the report quotes and the numbers the live demo shows always agree.
+Used identically by the report tables (Person 2's harness, through
+`route_metrics_for_predictions`), the HMM experiments (hmm/tune_decoder.py)
+and the live API (api/pipeline.py), per docs/INTERFACES.md Interface 4.1, so
+every route number in the report and the demo is computed one way.
+
+Ground truth per observation is the reference-route arc assigned to that GPS
+point by features.candidate_generator.match_gps_to_route_arcs -- the same
+assignment that produced the training labels. (`.route` itself lists each
+traversed arc once, so it cannot be compared position by position with one
+prediction per GPS point.)
 """
-import itertools
+from __future__ import annotations
+
+import os
 from difflib import SequenceMatcher
+from itertools import groupby
+from pathlib import Path
 from typing import List, Optional, Union
 
 import networkx as nx
 import numpy as np
 import pandas as pd
 
-from data.preprocessor import R_EARTH
-
 NO_CANDIDATE_ARC = -1
+DATA_ROOT = Path(os.environ.get("PATHSNAP_DATA", Path(__file__).resolve().parents[1] / "data" / "raw"))
 
 
-def _haversine_distance_vec(lon1, lat1, lon2_arr: np.ndarray, lat2_arr: np.ndarray) -> np.ndarray:
-    """Vectorized haversine from one point to an array of points, in meters."""
-    phi1, phi2 = np.radians(lat1), np.radians(lat2_arr)
-    dphi = np.radians(lat2_arr - lat1)
-    dlambda = np.radians(lon2_arr - lon1)
-    a = np.sin(dphi / 2.0) ** 2 + np.cos(phi1) * np.cos(phi2) * np.sin(dlambda / 2.0) ** 2
-    return 2 * R_EARTH * np.arctan2(np.sqrt(a), np.sqrt(1 - a))
+def _arc_endpoints(road: Union[nx.MultiDiGraph, pd.DataFrame]) -> tuple:
+    """(from_node, to_node) arrays indexed by arc_id."""
+    if isinstance(road, pd.DataFrame):
+        return road["from_node"].to_numpy(), road["to_node"].to_numpy()
+    edges = [(d["arc_id"], u, v) for u, v, d in road.edges(data=True)]
+    n = max(e[0] for e in edges) + 1
+    frm, to = np.full(n, -1), np.full(n, -2)
+    for arc_id, u, v in edges:
+        frm[arc_id], to[arc_id] = u, v
+    return frm, to
 
 
-def _arc_edge_lookup_from_arcs_df(arcs_df: pd.DataFrame) -> dict:
-    """arc_id (row index, per data/loader.load_arcs) -> (from_node, to_node)."""
-    return {int(i): (int(row["from_node"]), int(row["to_node"])) for i, row in arcs_df.iterrows()}
-
-
-def _arc_edge_lookup(road_graph_or_arcs_df: Union[nx.MultiDiGraph, pd.DataFrame]) -> dict:
-    if isinstance(road_graph_or_arcs_df, pd.DataFrame):
-        return _arc_edge_lookup_from_arcs_df(road_graph_or_arcs_df)
-    return {data["arc_id"]: (u, v) for u, v, data in road_graph_or_arcs_df.edges(data=True)}
-
-
-def _arcs_connected(arc_u: int, arc_v: int, arc_edge_lookup: dict) -> bool:
-    """True if arc_v can immediately follow arc_u: same arc, or u's end node is v's start node."""
-    if arc_u == arc_v:
-        return True
-    if arc_u not in arc_edge_lookup or arc_v not in arc_edge_lookup:
-        return False
-    _, u_end = arc_edge_lookup[arc_u]
-    v_start, _ = arc_edge_lookup[arc_v]
-    return u_end == v_start
+def _collapse(arcs) -> list:
+    """Ordered list of distinct consecutive arcs, i.e. the route as a road sequence."""
+    return [a for a, _ in groupby(arcs) if a != NO_CANDIDATE_ARC]
 
 
 def compute_route_metrics(
@@ -55,84 +51,76 @@ def compute_route_metrics(
     road_graph: Union[nx.MultiDiGraph, pd.DataFrame],
 ) -> dict:
     """
-    predicted_arcs / ground_truth_arcs: chronological, observation-aligned
-    arc_id sequences (same length and index meaning -- element i of each is
-    "the arc at the i-th relevant GPS observation"). Observations with no
-    candidate are represented by NO_CANDIDATE_ARC (-1) and never count as a
-    match.
+    predicted_arcs / ground_truth_arcs: one arc_id per GPS observation, in
+    time order, same length (NO_CANDIDATE_ARC = -1 where there is none).
+    road_graph: hmm.road_graph.build_road_graph() output, or the raw arcs_df
+    (arc_id = row index), which is what api/pipeline.py has.
 
-    road_graph: a prebuilt hmm.road_graph.build_road_graph() MultiDiGraph,
-    OR the raw `arcs_df` DataFrame (arc_id = row index, columns from_node/
-    to_node) -- the latter is accepted directly for compatibility with
-    api/pipeline.py, which only has arcs_df on hand, not a prebuilt graph.
-
-    Returns a superset of keys covering both the documented interface and
-    api/pipeline.py's RouteMetricsResponse fields:
-      - "pointwise_accuracy" / "pointwise_top1_accuracy": fraction of
-        observations where predicted_arc == gt_arc (same value, two names
-        -- the schema in api/schemas.py uses the latter).
-      - "route_continuity": fraction of consecutive predicted arcs (u, v)
-        that are topologically connected (same arc, or u's end node ==
-        v's start node).
-      - "sequence_score": normalized sequence similarity (difflib ratio,
-        in [0, 1]) between the full predicted and ground-truth arc
-        sequences -- robust to small shifts/insertions that pointwise
-        accuracy punishes harshly.
-      - "sequence_coverage" / "sequence_precision": recall/precision of
-        the *set* of distinct arcs predicted (consecutive repeats
-        collapsed) against the set of distinct ground-truth route arcs.
-      - "total_observations", "matched_observations": raw counts behind
-        pointwise_accuracy.
+    Returns:
+      pointwise_accuracy (also as pointwise_top1_accuracy, the API field):
+          fraction of observations whose predicted arc is the ground-truth arc.
+      route_continuity: fraction of consecutive predicted arcs (u, v),
+          skipping observations without a prediction, where v can directly
+          follow u: u == v (still on the same road) or end(u) == start(v).
+      arc_change_continuity: the same, counted only over pairs with u != v.
+          At 1 Hz most pairs are "same arc", which makes route_continuity
+          high for any matcher; this isolates the moments the route moves to
+          a new road, where an independent classifier tends to jump.
+      sequence_score: difflib similarity ratio (0..1) between the predicted
+          and ground-truth routes as ordered lists of distinct arcs.
+      sequence_coverage / sequence_precision: share of ground-truth route
+          arcs that were predicted / share of predicted arcs on the route.
+      plus the raw counts behind them, so results can be pooled over trips.
     """
     n = min(len(predicted_arcs), len(ground_truth_arcs))
-    if n == 0:
-        return {
-            "pointwise_accuracy": 0.0,
-            "pointwise_top1_accuracy": 0.0,
-            "route_continuity": 1.0,
-            "sequence_score": 0.0,
-            "sequence_coverage": 0.0,
-            "sequence_precision": 0.0,
-            "total_observations": 0,
-            "matched_observations": 0,
-        }
+    pred = np.asarray(predicted_arcs[:n], dtype=np.int64)
+    gt = np.asarray(ground_truth_arcs[:n], dtype=np.int64)
+    matches = int(((pred == gt) & (pred != NO_CANDIDATE_ARC)).sum())
 
-    pred, gt = predicted_arcs[:n], ground_truth_arcs[:n]
-    matches = sum(1 for p, g in zip(pred, gt) if p == g and p != NO_CANDIDATE_ARC)
-    pointwise_accuracy = matches / n
+    frm, to = _arc_endpoints(road_graph)
+    valid = np.asarray([a for a in predicted_arcs if 0 <= a < len(frm)], dtype=np.int64)
+    a, b = valid[:-1], valid[1:]
+    connected = (a == b) | (to[a] == frm[b])
+    changes = a != b
+    pairs, n_connected = int(len(a)), int(connected.sum())
+    n_changes, n_changes_connected = int(changes.sum()), int((connected & changes).sum())
 
-    arc_edge_lookup = _arc_edge_lookup(road_graph)
-    valid_pred = [a for a in predicted_arcs if a != NO_CANDIDATE_ARC]
-    if len(valid_pred) < 2:
-        route_continuity = 1.0
-    else:
-        connected = sum(
-            1 for a, b in zip(valid_pred[:-1], valid_pred[1:])
-            if _arcs_connected(a, b, arc_edge_lookup)
-        )
-        route_continuity = connected / (len(valid_pred) - 1)
+    pred_route, gt_route = _collapse(pred.tolist()), _collapse(gt.tolist())
+    sequence_score = SequenceMatcher(None, pred_route, gt_route, autojunk=False).ratio() if (pred_route or gt_route) else 0.0
+    gt_set, pred_set = set(gt_route), set(pred_route)
+    overlap = len(gt_set & pred_set)
 
-    sequence_score = SequenceMatcher(None, pred, gt).ratio()
-
-    gt_set = set(ground_truth_arcs) if ground_truth_arcs else set()
-    collapsed_pred_set = {k for k, _ in itertools.groupby(predicted_arcs) if k != NO_CANDIDATE_ARC}
-    if gt_set:
-        overlap = len(collapsed_pred_set & gt_set)
-        sequence_coverage = overlap / len(gt_set)
-        sequence_precision = overlap / max(len(collapsed_pred_set), 1)
-    else:
-        sequence_coverage = 0.0
-        sequence_precision = 0.0
-
+    pointwise = matches / n if n else 0.0
     return {
-        "pointwise_accuracy": round(pointwise_accuracy, 4),
-        "pointwise_top1_accuracy": round(pointwise_accuracy, 4),
-        "route_continuity": round(route_continuity, 4),
+        "pointwise_accuracy": round(pointwise, 4),
+        "pointwise_top1_accuracy": round(pointwise, 4),
+        "route_continuity": round(n_connected / pairs, 4) if pairs else 1.0,
+        "arc_change_continuity": round(n_changes_connected / n_changes, 4) if n_changes else 1.0,
         "sequence_score": round(sequence_score, 4),
-        "sequence_coverage": round(sequence_coverage, 4),
-        "sequence_precision": round(sequence_precision, 4),
+        "sequence_coverage": round(overlap / len(gt_set), 4) if gt_set else 0.0,
+        "sequence_precision": round(overlap / len(pred_set), 4) if pred_set else 0.0,
         "total_observations": n,
         "matched_observations": matches,
+        "continuity_pairs": pairs,
+        "continuity_connected": n_connected,
+        "arc_changes": n_changes,
+        "arc_changes_connected": n_changes_connected,
+    }
+
+
+def pool_route_metrics(per_trip: pd.DataFrame) -> dict:
+    """Pools per-trip compute_route_metrics rows: counts are summed, sequence scores averaged over trips."""
+    s = per_trip[["total_observations", "matched_observations", "continuity_pairs", "continuity_connected",
+                  "arc_changes", "arc_changes_connected"]].sum()
+    return {
+        "pointwise_accuracy": float(s.matched_observations / max(s.total_observations, 1)),
+        "route_continuity": float(s.continuity_connected / max(s.continuity_pairs, 1)),
+        "arc_change_continuity": float(s.arc_changes_connected / max(s.arc_changes, 1)),
+        "sequence_score": float(per_trip["sequence_score"].mean()),
+        "sequence_coverage": float(per_trip["sequence_coverage"].mean()),
+        "sequence_precision": float(per_trip["sequence_precision"].mean()),
+        "n_trips": int(len(per_trip)),
+        "n_observations": int(s.total_observations),
     }
 
 
@@ -141,56 +129,55 @@ def align_route_to_observations(
     nodes_df: pd.DataFrame,
     arcs_df: pd.DataFrame,
     route: List[int],
-    radius_m: float = 60.0,
 ) -> List[int]:
-    """
-    Converts the raw `.route` file (the ordered list of DISTINCT arcs
-    traversed -- routinely 2.5x-28x shorter than `.track`, since one arc
-    spans many consecutive GPS fixes) into an observation-aligned sequence
-    the same length as predicted_arcs, for a fair pointwise comparison in
-    compute_route_metrics.
-
-    For each GPS observation, picks whichever route arc is geometrically
-    nearest (by midpoint distance), among those within radius_m;
-    NO_CANDIDATE_ARC (-1) if none are that close (GPS noise/dropout). Same
-    nearest-route-member heuristic as features/candidate_generator.py uses
-    to build training labels -- see its docstring for why positional
-    indexing into `.route` is wrong.
-    """
+    """One ground-truth arc per GPS observation, assigned exactly as the training labels were."""
     if not route:
         return [NO_CANDIDATE_ARC] * len(track_df)
-
-    route_arcs = arcs_df.iloc[route]
-    mid_lon = ((nodes_df["lon"].values[route_arcs["from_node"].values]
-                + nodes_df["lon"].values[route_arcs["to_node"].values]) / 2.0)
-    mid_lat = ((nodes_df["lat"].values[route_arcs["from_node"].values]
-                + nodes_df["lat"].values[route_arcs["to_node"].values]) / 2.0)
-
-    aligned = []
-    for _, obs in track_df.iterrows():
-        dists = _haversine_distance_vec(obs["lon"], obs["lat"], mid_lon, mid_lat)
-        best_i = int(np.argmin(dists))
-        aligned.append(route[best_i] if dists[best_i] <= radius_m else NO_CANDIDATE_ARC)
-    return aligned
+    from features.candidate_generator import match_gps_to_route_arcs
+    matched, _ = match_gps_to_route_arcs(track_df, nodes_df, arcs_df, route)
+    return [int(a) for a in matched]
 
 
-def candidate_level_ground_truth(candidates_df, obs_range: Optional[range] = None) -> List[int]:
+def trip_dir(trip_id: str, data_root: Path = DATA_ROOT) -> Path:
+    for part in ("student_test", "train"):
+        d = Path(data_root) / part / trip_id
+        if d.is_dir():
+            return d
+    raise FileNotFoundError(f"trip {trip_id} not found under {data_root}/train or {data_root}/student_test")
+
+
+def load_trip_reference(trip_id: str, data_root: Path = DATA_ROOT) -> dict:
+    """Raw files plus the per-observation ground truth for one train/student_test trip."""
+    from data.loader import load_arcs, load_nodes, load_route, load_track
+    d = trip_dir(trip_id, data_root)
+    track, nodes, arcs = load_track(d / f"{trip_id}.track"), load_nodes(d / f"{trip_id}.nodes"), load_arcs(d / f"{trip_id}.arcs")
+    route = load_route(d / f"{trip_id}.route")
+    return {"track": track, "nodes": nodes, "arcs": arcs, "route": route,
+            "gt": align_route_to_observations(track, nodes, arcs, route)}
+
+
+def classifier_only_arcs(trip_pred: pd.DataFrame, n_obs: int, score_col: str = "proba") -> List[int]:
+    """Highest-scoring candidate per observation, each chosen independently (no HMM)."""
+    best = trip_pred.loc[trip_pred.groupby("obs_idx")[score_col].idxmax(), ["obs_idx", "arc_id"]]
+    out = np.full(n_obs, NO_CANDIDATE_ARC, dtype=np.int64)
+    out[best["obs_idx"].to_numpy()] = best["arc_id"].to_numpy()
+    return out.tolist()
+
+
+def route_metrics_for_predictions(pred_df: pd.DataFrame, data_root: Path = DATA_ROOT,
+                                  per_trip_out: Optional[Path] = None) -> dict:
     """
-    Derives the observation-aligned ground-truth arc sequence from a
-    *training-time* candidates_df that still has the `label` column (label
-    == 1 marks the candidate matching the reference route at that step).
-    Used to build `ground_truth_arcs` for compute_route_metrics during
-    offline evaluation; at serving time, Person 4 uses
-    `align_route_to_observations` instead, since only the raw `.route`
-    file (not a labeled candidate table) is available there.
+    Route metrics of classifier-only predictions, pooled over the trips in
+    pred_df (columns trip_id, obs_idx, arc_id, proba). Plugs into Person 2's
+    harness as run_experiment(route_metrics_fn=...), or can be applied to an
+    existing run's proba parquet with evaluation/route_metrics_cli.py.
     """
-    if "label" not in candidates_df.columns:
-        raise ValueError("candidates_df has no 'label' column -- pass the training-time candidate table")
-
-    positives = candidates_df[candidates_df["label"] == 1]
-    gt_by_obs = dict(zip(positives["obs_idx"], positives["arc_id"]))
-
-    if obs_range is None:
-        obs_range = range(int(candidates_df["obs_idx"].min()), int(candidates_df["obs_idx"].max()) + 1)
-
-    return [gt_by_obs.get(obs_idx, NO_CANDIDATE_ARC) for obs_idx in obs_range]
+    rows = []
+    for tid, g in pred_df.groupby("trip_id"):
+        ref = load_trip_reference(str(tid), data_root)
+        arcs = classifier_only_arcs(g, len(ref["track"]))
+        rows.append({"trip_id": tid, **compute_route_metrics(arcs, ref["gt"], ref["arcs"])})
+    per_trip = pd.DataFrame(rows)
+    if per_trip_out is not None:
+        per_trip.to_csv(per_trip_out, index=False)
+    return pool_route_metrics(per_trip)

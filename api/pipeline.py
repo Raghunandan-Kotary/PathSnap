@@ -9,7 +9,7 @@ from api.config import settings, BASE_DIR
 from api.schemas import PredictionResponse, RouteMetricsResponse, TimingBreakdown
 from api.logger import api_logger
 from data.loader import load_track, load_nodes, load_arcs, load_route
-from evaluation.route_metrics import compute_route_metrics
+from evaluation.route_metrics import align_route_to_observations, compute_route_metrics
 
 try:
     from maps.folium_generator import generate_folium_map
@@ -130,7 +130,11 @@ class PathSnapPipeline:
             t_decode = (time.perf_counter() - t_decode_start) * 1000
 
         # 5. Server-Side Ground Truth Evaluation (NEVER leaks to UI)
-        raw_metrics = compute_route_metrics(predicted_arcs, gt_arcs, arcs_df)
+        # .route lists each traversed arc once; predictions are one per GPS point.
+        # Assign a ground-truth arc to every GPS point exactly as the training
+        # labels were assigned, then compare point by point.
+        gt_per_obs = align_route_to_observations(track_df, nodes_df, arcs_df, gt_arcs)
+        raw_metrics = compute_route_metrics(predicted_arcs, gt_per_obs, arcs_df)
         metrics = RouteMetricsResponse(
             pointwise_top1_accuracy=raw_metrics["pointwise_top1_accuracy"],
             route_continuity=raw_metrics["route_continuity"],
@@ -147,7 +151,7 @@ class PathSnapPipeline:
                     nodes_df=nodes_df,
                     arcs_df=arcs_df,
                     predicted_arcs=predicted_arcs,
-                    ground_truth_arcs=gt_arcs,
+                    ground_truth_arcs=None,  # this HTML goes to the UI: no reference route in it
                     trip_id=trip_id
                 )
                 map_html = folium_map._repr_html_()

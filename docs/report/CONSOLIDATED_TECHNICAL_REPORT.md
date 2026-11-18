@@ -107,29 +107,31 @@ The tuned model reduces overfitting: training and validation curves continue con
 ---
 
 # 5. HMM and Log-Space Viterbi Route Reconstruction (Person 3)
+Full answers to questions 5.1–5.6: `docs/report/PERSON3_REPORT_SECTIONS.md`. The numbers come from `experiments/results/person3_hmm_comparison_summary.json` (written by `hmm/tune_decoder.py`).
 
-## 5.1 Formulation
-1. **Hidden States**: Candidate road arcs $s_t \in C_t$ generated for each observation $t$.
-2. **Emission Probabilities**:
-   $$\log P(o_t \mid s_t) = \log \left[ \alpha \cdot P_{\text{clf}}(s_t \mid o_t) + (1 - \alpha) \cdot \exp\left(-\frac{\text{dist}(o_t, s_t)}{\sigma_{\text{dist}}}\right) \right]$$
-   where $\alpha = 1.0$ (model mode) and $\sigma_{\text{dist}} = 30.0\text{ m}$.
-3. **Transition Probabilities**:
-   $$\log P(s_t \mid s_{t-1}) = -\frac{|d_{\text{network}}(s_{t-1}, s_t) - d_{\text{great\_circle}}(o_{t-1}, o_t)|}{\sigma_{\text{trans}}}$$
-   where $\sigma_{\text{trans}} = 50.0\text{ m}$, and $d_{\text{network}}$ is the shortest directed path distance in the road graph. If disconnected, a fixed penalty of $-25.0$ is applied.
-4. **Viterbi Recurrence (Log-Space)**:
-   $$V_t(s) = \log P(o_t \mid s) + \max_{s'} \left[ V_{t-1}(s') + \log P(s \mid s') \right]$$
-5. **Edge Cases**:
-   - Observations with zero candidates receive marker arc `-1`.
-   - GPS time gaps $\Delta t > 10.0\text{ s}$ split the trajectory into independent Viterbi segments to prevent impossible transition penalties across sensor blackouts.
+- **Hidden states:** the candidate arcs of each GPS observation.
+- **Emission:** w·log p_clf + (1−w)·(−½(d/σ)²), with w = 0.25 and σ = 7 m. p_clf is the calibrated tuned-XGBoost probability.
+- **Transition:** Newson–Krumm: −|road distance − straight-line GPS distance|/β, with β = 10 m. Arcs are directed. Unreachable transitions (beyond 1 km) get −10.
+- **Gaps:** time gaps over 30 s split the sequence.
+- **Tuning:** on the 80 training trips with out-of-fold probabilities; student-test was only scored.
+
+| Student-test (10 trips) | Pointwise acc. | Route continuity | Arc-change continuity | Sequence score |
+| :--- | :---: | :---: | :---: | :---: |
+| Classifier only | 0.7252 | 0.8785 | 0.6686 | 0.5504 |
+| **Classifier + HMM (deployed)** | **0.8536** | **0.9696** | **0.8354** | **0.8364** |
+| HMM, distance-only emissions | 0.8585 | 0.9732 | 0.8610 | 0.8442 |
+
+The HMM improved all 10 trips. It corrected 2,909 points and broke 448. For 486 of the points that stayed wrong, the true arc was not among the candidates at all. Distance-only emissions are slightly better than adding the classifier; see the PERSON3 sections for the analysis.
 
 ---
 
 # 6. Geographical Visualizations (Folium) (Person 3)
-Interactive Folium maps are generated with four distinct layers:
-- **Layer 1 (Blue Circles)**: Raw noisy GPS points.
-- **Layer 2 (Gray Lines)**: Contextual road network topology.
-- **Layer 3 (Green PolyLine)**: Server-side reference route.
-- **Layer 4 (Red Dashed PolyLine)**: PathSnap reconstructed predicted route.
+`maps/folium_generator.py` draws raw GPS points (blue), nearby roads (grey), the reference route (green), the classifier-only route (orange, report maps only) and the HMM route (red, dashed), with a legend and layer controls. The view is fitted to the trip.
+
+![Trip 00000077, whole trip](../figures/person3_trip_00000077_full.png)
+![Trip 00000077, zoom on a stop where the HMM corrected 68 of 90 points](../figures/person3_trip_00000077_zoom.png)
+
+The map returned to the UI never includes the reference route.
 
 ---
 

@@ -1,0 +1,15 @@
+{
+  "objective": "pooled pointwise accuracy on the 80 training trips (out-of-fold probabilities)",
+  "combinations_tried": 45,
+  "params": {
+    "disconnect_penalty": 10.0,
+    "gap_threshold_s": 30.0,
+    "dijkstra_cutoff_m": 1000.0,
+    "backtrack_tolerance_m": 50.0,
+    "emission_blend": "log_linear",
+    "emission_weight": 0.25,
+    "distance_scale_m": 7.0,
+    "transition_scale_m": 10.0
+  },
+  "probabilities_run_id": "20261118-103837_xgboost_tuned"
+}

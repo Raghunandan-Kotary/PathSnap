@@ -19,6 +19,7 @@ GPS_COLOR = "#1E88E5"       # blue dots: raw GPS
 ROAD_COLOR = "#9E9E9E"      # gray lines: road network
 REFERENCE_COLOR = "#2E7D32"  # green line: reference route
 PREDICTED_COLOR = "#D32F2F"  # red line: predicted route
+CLASSIFIER_ONLY_COLOR = "#F57C00"  # orange line: classifier-only route (report comparison maps)
 
 
 def _arc_coords(arc_id: int, nodes_df: pd.DataFrame, arcs_df: pd.DataFrame) -> Optional[tuple]:
@@ -66,6 +67,7 @@ def _build_map(
     predicted_route: List[int],
     ground_truth_route: Optional[List[int]] = None,
     road_corridor_radius_m: float = 150.0,
+    classifier_only_route: Optional[List[int]] = None,
 ) -> folium.Map:
     """Builds the folium.Map object (shared by generate_trip_map and generate_folium_map)."""
     center_lat, center_lon = track_df["lat"].mean(), track_df["lon"].mean()
@@ -108,23 +110,23 @@ def _build_map(
         ).add_to(road_layer)
     road_layer.add_to(fmap)
 
-    if ground_truth_route:
-        gt_layer = folium.FeatureGroup(name="Reference route", show=True)
-        for arc_id in ground_truth_route:
-            coords = _arc_coords(arc_id, nodes_df, arcs_df)
+    # Routes come one arc per GPS point; draw each distinct arc once.
+    def add_route_layer(name, arcs, color, weight, dash=None):
+        layer = folium.FeatureGroup(name=name, show=True)
+        for arc_id in dict.fromkeys(arcs):
+            coords = _arc_coords(int(arc_id), nodes_df, arcs_df)
             if coords:
-                folium.PolyLine(coords, color=REFERENCE_COLOR, weight=4, opacity=0.9).add_to(gt_layer)
-        gt_layer.add_to(fmap)
+                folium.PolyLine(coords, color=color, weight=weight, opacity=0.9, dash_array=dash).add_to(layer)
+        layer.add_to(fmap)
 
-    pred_layer = folium.FeatureGroup(name="Predicted route", show=True)
-    for arc_id in predicted_route:
-        coords = _arc_coords(arc_id, nodes_df, arcs_df)
-        if coords:
-            folium.PolyLine(coords, color=PREDICTED_COLOR, weight=4, opacity=0.9, dash_array="6,4").add_to(pred_layer)
-    pred_layer.add_to(fmap)
+    if ground_truth_route:
+        add_route_layer("Reference route", ground_truth_route, REFERENCE_COLOR, 6)
+    if classifier_only_route:
+        add_route_layer("Classifier-only route", classifier_only_route, CLASSIFIER_ONLY_COLOR, 3)
+    add_route_layer("Predicted route", predicted_route, PREDICTED_COLOR, 4, dash="6,4")
 
     folium.LayerControl(collapsed=False).add_to(fmap)
-    _add_legend(fmap, show_reference=bool(ground_truth_route))
+    _add_legend(fmap, show_reference=bool(ground_truth_route), show_classifier_only=bool(classifier_only_route))
 
     # Bound on the GPS track, not the full road-network node table: the
     # .nodes file is a region-wide extract that typically covers a much
@@ -145,6 +147,7 @@ def generate_trip_map(
     ground_truth_route: Optional[List[int]] = None,
     save_path: Optional[Path] = None,
     road_corridor_radius_m: float = 150.0,
+    classifier_only_route: Optional[List[int]] = None,
 ) -> str:
     """
     Returns the map as an HTML string (suitable for embedding directly in
@@ -158,9 +161,12 @@ def generate_trip_map(
       - Reference route (green line) -- only if ground_truth_route is given;
         omit when calling from anywhere the UI can see the response (ground
         truth must never leave the server, per docs/SYSTEM_ARCHITECTURE.md).
+      - Classifier-only route (orange line) -- only if classifier_only_route
+        is given; used by the report maps to show what the HMM changed.
       - Predicted route (red line)
     """
-    fmap = _build_map(track_df, nodes_df, arcs_df, predicted_route, ground_truth_route, road_corridor_radius_m)
+    fmap = _build_map(track_df, nodes_df, arcs_df, predicted_route, ground_truth_route, road_corridor_radius_m,
+                      classifier_only_route)
     html = fmap.get_root().render()
     if save_path is not None:
         save_path = Path(save_path)
@@ -189,12 +195,13 @@ def generate_folium_map(
     return fmap
 
 
-def _add_legend(fmap: folium.Map, show_reference: bool) -> None:
-    reference_row = (
-        f'<div><span style="background:{REFERENCE_COLOR};width:14px;height:4px;'
-        'display:inline-block;margin-right:6px;"></span>Reference route</div>'
-        if show_reference else ""
-    )
+def _add_legend(fmap: folium.Map, show_reference: bool, show_classifier_only: bool = False) -> None:
+    def line_row(color, label):
+        return (f'<div><span style="background:{color};width:14px;height:4px;'
+                f'display:inline-block;margin-right:6px;"></span>{label}</div>')
+
+    reference_row = line_row(REFERENCE_COLOR, "Reference route") if show_reference else ""
+    reference_row += line_row(CLASSIFIER_ONLY_COLOR, "Classifier-only route") if show_classifier_only else ""
     legend_html = f"""
     <div style="position: fixed; bottom: 24px; left: 24px; z-index: 9999;
                 background: white; padding: 10px 12px; border-radius: 6px;

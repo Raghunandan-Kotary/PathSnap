@@ -2,101 +2,101 @@
   {
     "trip_id": "00000000",
     "status": "PASS",
-    "execution_mode": "viterbi_distance_emissions",
-    "observations": 179,
-    "top1_acc_pct": 0.56,
-    "continuity_pct": 96.52,
-    "server_time_ms": 22367.18,
-    "client_rtt_ms": 22398.59
+    "execution_mode": "model_plus_viterbi",
+    "observations": 2503,
+    "top1_acc_pct": 90.13,
+    "continuity_pct": 98.08,
+    "server_time_ms": 2573.57,
+    "client_rtt_ms": 2596.73
   },
   {
     "trip_id": "00000007",
     "status": "PASS",
-    "execution_mode": "viterbi_distance_emissions",
-    "observations": 123,
-    "top1_acc_pct": 0.81,
-    "continuity_pct": 97.41,
-    "server_time_ms": 7561.06,
-    "client_rtt_ms": 7576.69
+    "execution_mode": "model_plus_viterbi",
+    "observations": 1354,
+    "top1_acc_pct": 98.52,
+    "continuity_pct": 99.85,
+    "server_time_ms": 1361.98,
+    "client_rtt_ms": 1371.2
   },
   {
     "trip_id": "00000009",
     "status": "PASS",
-    "execution_mode": "viterbi_distance_emissions",
-    "observations": 429,
-    "top1_acc_pct": 0.0,
-    "continuity_pct": 75.29,
-    "server_time_ms": 55859.05,
-    "client_rtt_ms": 55895.8
+    "execution_mode": "model_plus_viterbi",
+    "observations": 1049,
+    "top1_acc_pct": 87.04,
+    "continuity_pct": 93.23,
+    "server_time_ms": 2159.78,
+    "client_rtt_ms": 2170.33
   },
   {
     "trip_id": "00000040",
     "status": "PASS",
-    "execution_mode": "viterbi_distance_emissions",
-    "observations": 309,
-    "top1_acc_pct": 0.32,
-    "continuity_pct": 95.66,
-    "server_time_ms": 24395.62,
-    "client_rtt_ms": 24421.93
+    "execution_mode": "model_plus_viterbi",
+    "observations": 2995,
+    "top1_acc_pct": 94.52,
+    "continuity_pct": 98.0,
+    "server_time_ms": 3345.91,
+    "client_rtt_ms": 3360.22
   },
   {
     "trip_id": "00000052",
     "status": "PASS",
-    "execution_mode": "viterbi_distance_emissions",
-    "observations": 95,
-    "top1_acc_pct": 1.05,
-    "continuity_pct": 87.36,
-    "server_time_ms": 3414.01,
-    "client_rtt_ms": 3427.15
+    "execution_mode": "model_plus_viterbi",
+    "observations": 262,
+    "top1_acc_pct": 88.93,
+    "continuity_pct": 93.87,
+    "server_time_ms": 404.5,
+    "client_rtt_ms": 411.45
   },
   {
     "trip_id": "00000056",
     "status": "PASS",
-    "execution_mode": "viterbi_distance_emissions",
-    "observations": 1323,
-    "top1_acc_pct": 0.0,
-    "continuity_pct": 86.23,
-    "server_time_ms": 85899.85,
-    "client_rtt_ms": 85948.34
+    "execution_mode": "model_plus_viterbi",
+    "observations": 3958,
+    "top1_acc_pct": 82.39,
+    "continuity_pct": 94.92,
+    "server_time_ms": 4712.17,
+    "client_rtt_ms": 4735.48
   },
   {
     "trip_id": "00000065",
     "status": "PASS",
-    "execution_mode": "viterbi_distance_emissions",
-    "observations": 145,
-    "top1_acc_pct": 0.69,
-    "continuity_pct": 93.35,
-    "server_time_ms": 20152.98,
-    "client_rtt_ms": 20175.29
+    "execution_mode": "model_plus_viterbi",
+    "observations": 768,
+    "top1_acc_pct": 76.17,
+    "continuity_pct": 97.0,
+    "server_time_ms": 1495.06,
+    "client_rtt_ms": 1505.21
   },
   {
     "trip_id": "00000076",
     "status": "PASS",
-    "execution_mode": "viterbi_distance_emissions",
-    "observations": 374,
-    "top1_acc_pct": 0.27,
-    "continuity_pct": 84.92,
-    "server_time_ms": 86219.26,
-    "client_rtt_ms": 86253.07
+    "execution_mode": "model_plus_viterbi",
+    "observations": 1486,
+    "top1_acc_pct": 87.95,
+    "continuity_pct": 94.68,
+    "server_time_ms": 3595.39,
+    "client_rtt_ms": 3611.68
   },
   {
     "trip_id": "00000077",
     "status": "PASS",
-    "execution_mode": "viterbi_distance_emissions",
-    "observations": 268,
-    "top1_acc_pct": 0.37,
-    "continuity_pct": 96.27,
-    "server_time_ms": 86680.59,
-    "client_rtt_ms": 86720.93
+    "execution_mode": "model_plus_viterbi",
+    "observations": 3911,
+    "top1_acc_pct": 73.31,
+    "continuity_pct": 98.75,
+    "server_time_ms": 3807.13,
+    "client_rtt_ms": 3826.9
   },
   {
     "trip_id": "00000091",
     "status": "PASS",
-    "execution_mode": "viterbi_distance_emissions",
-    "observations": 232,
-    "top1_acc_pct": 0.43,
-    "continuity_pct": 91.07,
-    "server_time_ms": 37457.04,
-    "client_rtt_ms": 37478.21
+    "execution_mode": "model_plus_viterbi",
+    "observations": 874,
+    "top1_acc_pct": 87.87,
+    "continuity_pct": 96.22,
+    "server_time_ms": 1395.18,
+    "client_rtt_ms": 1403.02
   }
 ]

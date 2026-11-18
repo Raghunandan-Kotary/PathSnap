@@ -30,7 +30,7 @@ def build_road_graph(nodes_df: pd.DataFrame, arcs_df: pd.DataFrame) -> nx.MultiD
     ref_lat = nodes_df["lat"].median()
     xs, ys = project_coords(nodes_df["lon"].values, nodes_df["lat"].values, ref_lon, ref_lat)
 
-    graph = nx.MultiDiGraph()
+    graph = nx.MultiDiGraph(ref_lon=float(ref_lon), ref_lat=float(ref_lat))
     for node_id, x, y in zip(nodes_df["node_id"], xs, ys):
         graph.add_node(int(node_id), x=float(x), y=float(y))
 

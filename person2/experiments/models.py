@@ -81,5 +81,10 @@ HGB = ModelSpec("hist_gradient_boosting", "Boosting (histogram gradient boosting
 MLP = ModelSpec("mlp", "Neural network (shallow MLP)", build_mlp,
                 dict(hidden_layer_sizes=(64, 32), activation="relu", max_iter=100, early_stopping=True, validation_fraction=0.1))
 
-TEAMMATE_MODELS = [LOGREG, KNN, RANDOM_FOREST, HGB, MLP]
+from experiments.train_model_svm import build_linear_svm  # noqa: E402  (Person 3's model)
+
+LINEAR_SVM = ModelSpec("linear_svm", "Kernel-based (linear SVM)", build_linear_svm,
+                       dict(C=1.0, class_weight="balanced", max_iter=5000))
+
+TEAMMATE_MODELS = [LOGREG, KNN, RANDOM_FOREST, HGB, MLP, LINEAR_SVM]
 REGISTRY = {s.name: s for s in (XGBOOST, GAUSSIAN_NB, *TEAMMATE_MODELS)}
