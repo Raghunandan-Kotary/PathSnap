@@ -204,8 +204,8 @@ def main() -> None:
         w("## 7.5 API request log (Laptop 1)\n")
         if (ROOT / "docs" / "figures" / "api_cmd_log.png").exists():
             w("Command window of the API server while it receives prediction requests for evaluator trips 00000015 and 00000049 "
-              "(each request is logged with trip ID, client, latency, accuracy and continuity). This capture is a rehearsal with the API and the UI on one laptop, so the client "
-              "address is 127.0.0.1; in the two-laptop demo the same log shows the network address of Laptop 2.\n")
+              "(each request is logged with trip ID, client, latency, accuracy and continuity). In this capture the UI ran on the same machine as the API, "
+              "so the client address is 127.0.0.1; with the UI on Laptop 2, the client field shows Laptop 2's network address.\n")
             w("![API server command window](../figures/api_cmd_log.png)\n")
         w("Last entries of `api/logs/requests.log` from the run shown above:\n")
         w("```\n" + "\n".join(log[-4:]) + "\n```\n")
