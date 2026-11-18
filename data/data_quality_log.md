@@ -27,12 +27,12 @@ This log records the empirical observations, coordinate system justifications, s
 ## 2. Coordinate System & Geodesic Projection Justification
 
 - **Observation**:
-  Raw coordinates across trips range from longitude $-93^\circ$ (North America) to $+106^\circ$ (Southeast Asia), with latitudes between $15^\circ\text{ N}$ and $56^\circ\text{ N}$.
+  Raw coordinates across trips span global geographies: longitudes range from $-100.43^\circ$ (North America) to $+137.25^\circ$ (Australia / East Asia), with latitudes spanning from $-34.65^\circ\text{ S}$ (Southern Hemisphere) to $+61.71^\circ\text{ N}$ (High Northern Latitudes).
 - **Mathematical Limitation of Degree Euclidean Distance**:
   On an ellipsoidal/spherical earth of radius $R = 6,371,000\text{ m}$, the physical distance per degree of longitude shrinks with latitude:
   $$\Delta x = R \cdot \Delta\lambda \cdot \frac{\pi}{180} \cdot \cos(\phi)$$
   $$\Delta y = R \cdot \Delta\phi \cdot \frac{\pi}{180}$$
-  At latitude $\phi = 56^\circ\text{ N}$, $\cos(56^\circ) \approx 0.5592$. Thus, $1^\circ$ longitude spans only ~62.3 km, while $1^\circ$ latitude spans ~111.2 km. Naive degree-based Euclidean distance causes a **44% spatial distortion** along the longitudinal axis, skewing nearest-arc candidate queries.
+  At latitude $\phi = 56^\circ\text{ N}$ (and up to $62^\circ\text{ N}$), $\cos(56^\circ) \approx 0.5592$. Thus, $1^\circ$ longitude spans only ~62.3 km, while $1^\circ$ latitude spans ~111.2 km. Naive degree-based Euclidean distance causes up to a **44% to 53% spatial distortion** along the longitudinal axis, skewing nearest-arc candidate queries.
 - **Implementation Decision**:
   All spatial calculations, KDTree indexing, and candidate feature engineering project angular coordinates into local Cartesian coordinates $(x, y)$ in meters centered on each trip's median origin $(\lambda_{\text{ref}}, \phi_{\text{ref}})$:
   $$x = R \cdot (\lambda - \lambda_{\text{ref}}) \cdot \frac{\pi}{180} \cdot \cos\left(\phi_{\text{ref}} \cdot \frac{\pi}{180}\right)$$
@@ -81,7 +81,7 @@ This log records the empirical observations, coordinate system justifications, s
 - **Segment Lengths**:
   Median arc length is **41.2 meters** (mean 58.7 meters).
 - **Self-Loops & Anomalies**:
-  Zero self-loops (`from_node == to_node`) exist across all 90 networks.
+  Exactly 9 trips contain self-loops (`from_node == to_node`), totaling 24 self-loop arcs across the 90 networks (trips `00000013`: 2, `00000024`: 2, `00000035`: 2, `00000038`: 2, `00000055`: 8, `00000079`: 2, `00000084`: 2, `00000099`: 2, `00000091`: 2). These represent roundabout loops or cul-de-sac turnarounds where the arc returns to its junction node. All other arcs connect distinct topological nodes.
 - **Route Continuity in Ground Truth**:
   In 79 of 90 trips, the reference route is 100% topologically continuous (`arcs[route[i]].to_node == arcs[route[i+1]].from_node`).
   In 11 trips, minor 1–2 segment gaps exist in the reference route (connectivity $\ge 98.1\%$), caused by complex multi-lane junctions or sensor blackouts.

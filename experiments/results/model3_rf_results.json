@@ -1,0 +1,14 @@
+{
+  "model_name": "Model 3: Random Forest",
+  "family": "Tree Ensemble",
+  "hyperparameters": {
+    "n_estimators": 100,
+    "max_depth": 12,
+    "class_weight": "balanced_subsample"
+  },
+  "cv_macro_f1": 0.8472797727595784,
+  "cv_top1_accuracy": 0.32853208786324656,
+  "student_test_macro_f1": 0.7603823820326532,
+  "student_test_top1_accuracy": 0.7211899791231733,
+  "student_test_log_loss": 0.21430100506810723
+}

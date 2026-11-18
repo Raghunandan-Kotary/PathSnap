@@ -1,0 +1,13 @@
+{
+  "model_name": "Model 2: Distance-Weighted KNN",
+  "family": "Instance-based",
+  "hyperparameters": {
+    "n_neighbors": 15,
+    "weights": "distance"
+  },
+  "cv_macro_f1": 0.8450372139427273,
+  "cv_top1_accuracy": 0.2650674126391353,
+  "student_test_macro_f1": 0.8018353618411858,
+  "student_test_top1_accuracy": 0.19592728207104773,
+  "student_test_log_loss": 0.27906993014109377
+}

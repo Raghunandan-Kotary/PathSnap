@@ -1,0 +1,26 @@
+{
+  "model_name": "Model 1: Logistic Regression",
+  "family": "Linear",
+  "features": [
+    "feat_dist_to_arc",
+    "feat_arc_length",
+    "feat_heading_diff",
+    "feat_speed",
+    "feat_time_gap"
+  ],
+  "cv_results": {
+    "model_name": "Logistic_Regression",
+    "cv_macro_f1_mean": 0.6456631242823437,
+    "cv_macro_f1_std": 0.02143383107288813,
+    "cv_top1_acc_mean": 0.5815854360978039,
+    "training_time_s": 27.746,
+    "random_seed": 42
+  },
+  "student_test_results": {
+    "model_name": "Logistic_Regression",
+    "student_test_top1_acc": 0.6603340292275575,
+    "student_test_macro_f1": 0.6448749083818228,
+    "student_test_log_loss": 0.4298942555720292,
+    "inference_time_ms": 36.86
+  }
+}

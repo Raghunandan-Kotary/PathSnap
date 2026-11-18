@@ -1,0 +1,24 @@
+{
+  "model_name": "Model 4: HistGradientBoosting",
+  "family": "Boosting",
+  "hyperparameters": {
+    "learning_rate": 0.05,
+    "max_iter": 150,
+    "class_weight": "balanced"
+  },
+  "cv_results": {
+    "model_name": "Gradient_Boosting",
+    "cv_macro_f1_mean": 0.7346591211388099,
+    "cv_macro_f1_std": 0.004760020550859444,
+    "cv_top1_acc_mean": 0.638661079239,
+    "training_time_s": 232.541,
+    "random_seed": 42
+  },
+  "student_test_results": {
+    "model_name": "Gradient_Boosting",
+    "student_test_top1_acc": 0.7246346555323591,
+    "student_test_macro_f1": 0.7415293090753058,
+    "student_test_log_loss": 0.2360148440791472,
+    "inference_time_ms": 1534.81
+  }
+}
