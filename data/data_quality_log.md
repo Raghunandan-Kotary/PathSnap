@@ -81,7 +81,7 @@ This log records the empirical observations, coordinate system justifications, s
 - **Segment Lengths**:
   Median arc length is **41.2 meters** (mean 58.7 meters).
 - **Self-Loops & Anomalies**:
-  Exactly 9 trips contain self-loops (`from_node == to_node`), totaling 22 self-loop arcs across the 90 networks (trips `00000013`, `00000024`, `00000035`, `00000038`, `00000055`, `00000079`, `00000084`, `00000099`, `00000091`). These represent roundabout loops or cul-de-sac turnarounds where the arc returns to its junction node. All other arcs connect distinct topological nodes.
+  Exactly 9 trips contain self-loops (`from_node == to_node`), totaling 24 self-loop arcs across the 90 networks (trips `00000013`: 2, `00000024`: 2, `00000035`: 2, `00000038`: 2, `00000055`: 8, `00000079`: 2, `00000084`: 2, `00000099`: 2, `00000091`: 2). These represent roundabout loops or cul-de-sac turnarounds where the arc returns to its junction node. All other arcs connect distinct topological nodes.
 - **Route Continuity in Ground Truth**:
   In 79 of 90 trips, the reference route is 100% topologically continuous (`arcs[route[i]].to_node == arcs[route[i+1]].from_node`).
   In 11 trips, minor 1–2 segment gaps exist in the reference route (connectivity $\ge 98.1\%$), caused by complex multi-lane junctions or sensor blackouts.

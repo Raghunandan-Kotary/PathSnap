@@ -28,7 +28,7 @@ The dataset is not confined to a single city. Across all 90 trips:
 ### 3. Road Network Integrity & Anomalies
 - **Bidirectional Arcs**: 92.2% of road network segments are bidirectional (paired directed arcs $(u, v)$ and $(v, u)$).
 - **Arc Lengths**: Median physical road segment length is **41.2 meters** (mean: 58.7 meters, standard deviation: 64.3 meters).
-- **Self-Loops**: Exactly 9 trips contain self-loop arcs (`from_node == to_node`), totaling 22 self-loop arcs across the 90 networks (trips `00000013`, `00000024`, `00000035`, `00000038`, `00000055`, `00000079`, `00000084`, `00000099`, `00000091`). These represent roundabout loops or cul-de-sac turnarounds.
+- **Self-Loops**: Exactly 9 trips contain self-loop arcs (`from_node == to_node`), totaling 24 self-loop arcs across the 90 networks (trips `00000013`: 2, `00000024`: 2, `00000035`: 2, `00000038`: 2, `00000055`: 8, `00000079`: 2, `00000084`: 2, `00000099`: 2, `00000091`: 2). These represent roundabout loops or cul-de-sac turnarounds.
 - **Route Continuity**: 79 of 90 ground-truth `.route` files are 100% topologically continuous. 11 trips contain 1–2 disconnected segments (connectivity $\ge 98.1\%$) at complex multilane overpasses or sensor dropouts.
 
 ---
@@ -91,10 +91,16 @@ The difference between the pooled (8.24%) and per-trip (3.80%) miss rates is dri
 
 In both trips, significant trajectory sections occur on unmapped roads, private access ways, or off-network paths where the true traversed road segment is $> 60\text{ m}$ away from the digitized road graph. Because Trip 54 is grouped into **Fold 0** of the 5-fold `GroupKFold` split, Fold 0 exhibits an elevated candidate miss rate of **26.2%**.
 
-### 4. System Handling of Outlier Misses
-1. **Training Feature Table**: Observations without the true reference arc among their candidates generate exclusively negative candidate samples (`label=0`). This prevents false positive label corruption while providing valuable negative examples of parallel and near-miss corridors.
-2. **Observation Audit Guarantee**: Across all 227,577 observations, **0 points have 0 candidates** (100% candidate generation coverage via fallback).
-3. **Topological Recovery in Viterbi Decoder**: During inference, the Viterbi HMM decoder relies on road network connectivity transitions $\frac{|\Delta d_{\text{net}} - \Delta d_{\text{euc}}|}{\sigma_t}$. When an observation lacks its true arc, the decoder selects the most topologically plausible corridor and reconnects cleanly to the true route once the trajectory re-enters the mapped road network.
+### 4. Known Ground-Truth Limitation & Handling (Trips `00000054` and `00000033`)
+A critical finding from candidate generation audit is that for trips `00000054` and `00000033`, the reference `.route` sequence simply does not cover significant sections of the GPS trace (due to off-network driving, private roads, or truncated ground-truth logging). 
+
+**Methodological Limitation**:
+- Because the true traversed road segment is physically absent from the `.route` ground truth during these trace intervals, our sequential projection algorithm finds no matching route arc within the local search neighborhood and assigns `label = 0` to all generated candidates for that observation (creating all-negative candidate sets).
+- **Limitation Impact**: This creates a known label bias: valid road candidates traveled by the vehicle during these intervals are treated as negative examples during model training. While this avoids assigning arbitrary false-positive labels, it penalizes candidate emission probabilities along these unmapped trace portions.
+
+**System Mitigation in Downstream Pipeline**:
+1. **Zero-Candidate Guarantee**: Across all 227,577 observations in the dataset, **0 observations have 0 candidates** (100% spatial index query coverage achieved through the adaptive 5-nearest fallback).
+2. **Topological Gap Bridging in Viterbi Decoder**: During inference, the Viterbi HMM decoder compensates for this ground-truth gap. Rather than relying solely on classifier emissions, the transition matrix enforces road network shortest-path continuity $\frac{|\Delta d_{\text{net}} - \Delta d_{\text{euc}}|}{\sigma_t}$, routing through the most plausible connected network path until the vehicle re-enters the recognized route corridor.
 
 ---
 
