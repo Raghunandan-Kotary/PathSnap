@@ -1,0 +1,3 @@
+"""
+PathSnap Automated Tests Package
+"""

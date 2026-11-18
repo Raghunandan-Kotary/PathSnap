@@ -1,0 +1,29 @@
+# PathSnap Model Configuration (Person 2)
+model_name: "PathSnap_Best_Classifier"
+version: "1.0.0"
+algorithm_family: "Boosting"
+selected_model: "LightGBM"
+
+# Frozen features list
+features:
+  - "feat_dist_to_arc"
+  - "feat_arc_length"
+  - "feat_heading_diff"
+  - "feat_speed"
+  - "feat_time_gap"
+
+# Hyperparameters (Tuned via Optuna Bayesian Optimization)
+hyperparameters:
+  n_estimators: 150
+  learning_rate: 0.05
+  max_depth: 6
+  num_leaves: 31
+  subsample: 0.8
+  colsample_bytree: 0.8
+  random_state: 42
+
+# Training metadata
+training_trips: 80
+cv_folds: 5
+primary_metric: "Macro F1-score"
+calibration: "isotonic"
