@@ -167,15 +167,14 @@ Person 1 trained and evaluated two fundamental model families on the frozen feat
   - Inference Latency: **0.0003 ms/row**
 
 ### 2. Model 2: Distance-Weighted K-Nearest Neighbors (Instance-Based Family)
-- **Configuration**: $k = 15$ neighbors, distance-weighted kernel ($w = 1/d$).
-- **Performance**:
-  - 5-Fold Group CV Macro F1: **0.8450**
-  - Student-Test Top-1 Accuracy: **19.59%**
-  - Student-Test Macro F1: **0.8018**
-  - Student-Test Log Loss: **0.2791**
-  - Inference Latency: **0.3204 ms/row**
+- **Configuration**: $k = 15$ neighbors, distance-weighted kernel ($w = 1/d$), indexed with 100,000 stratified training candidates to preserve distance manifold geometry while evaluated across 100% complete validation and test candidate sets.
+- **Performance (Shared Harness Evaluation)**:
+  - 5-Fold Group CV Macro F1: **0.7749 ± 0.0221**
+  - Student-Test Top-1 Accuracy: **66.62%**
+  - Student-Test Macro F1: **0.8017**
+  - Student-Test Log Loss: **0.2587**
+  - Inference Latency: **11.08 ms total test query**
 
-### 3. Resolution of the Macro F1 vs. Top-1 Accuracy Discrepancy
-A prominent finding in Model 2 is that KNN achieves a very high binary Macro F1 (0.8450) but a low observation Top-1 accuracy (19.59%), whereas Logistic Regression achieves the reverse (Macro F1 0.6457, Top-1 66.03%):
-- **Binary Candidate Density vs. Arc Ranking**: KNN classifies candidates using local neighborhood density. Positive candidates in low-distance, low-heading regions are classified accurately under a global $0.5$ probability threshold. However, multiple parallel or intersecting road segments in the same road corridor receive nearly identical neighbor votes, producing probability ties. When taking $\text{argmax}_{a} P(a)$, these ties break arbitrarily, degrading observation Top-1 accuracy.
-- **Monotonic Ranking in Logistic Regression**: Logistic Regression learns a strictly monotonic negative log-odds slope with respect to `feat_dist_to_arc` ($\beta \approx -0.15$). Even though its linear decision hyperplane yields lower candidate-level binary F1, its predicted probabilities strictly decrease with distance, reliably ranking the closest candidate arc #1 within each observation group.
+### 3. Comparison & Metric Analysis
+- **Observation Top-1 Convergence**: When evaluated across complete candidate observation sets (where every candidate arc for each GPS observation is scored without row-level downsampling), Model 2 achieves **66.62% Top-1 accuracy**, closely matching Model 1's **66.03%**.
+- **Probability Calibration & Sharpness**: KNN outperforms Logistic Regression in both classification discrimination (Test Macro F1: **0.8017** vs. 0.6449) and probabilistic cross-entropy loss (Test Log Loss: **0.2587** vs. 0.4299). Its distance-weighted kernel locally sharpens probability peaks near true road alignments, providing high-confidence emission inputs for downstream Viterbi decoding.
