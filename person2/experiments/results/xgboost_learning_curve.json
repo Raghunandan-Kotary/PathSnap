@@ -11,9 +11,9 @@
     "gamma": 0.0
   },
   "n_rounds": 300,
-  "best_validation_round": 47,
-  "train_logloss_final": 0.10908889373551256,
-  "val_logloss_final": 0.13492677764425431,
-  "val_logloss_min": 0.13051562151978433,
-  "gap_final_val_minus_train": 0.025837883908741754
+  "best_validation_round": 34,
+  "train_logloss_final": 0.03723419996772601,
+  "val_logloss_final": 0.08662597838368664,
+  "val_logloss_min": 0.07548898624687543,
+  "gap_final_val_minus_train": 0.04939177841596063
 }

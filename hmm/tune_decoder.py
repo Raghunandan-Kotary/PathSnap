@@ -110,8 +110,14 @@ def _score_combo(params: dict) -> dict:
 
 def grid_search(base: dict, combos: list[dict], workers: int) -> pd.DataFrame:
     jobs = [{**base, **c} for c in combos]
-    with mp.get_context("fork").Pool(workers) as pool:
-        rows = pool.map(_score_combo, jobs)
+    if "fork" in mp.get_all_start_methods() and workers > 1:
+        with mp.get_context("fork").Pool(workers) as pool:
+            rows = pool.map(_score_combo, jobs)
+    else:  # Windows has no fork: score the same combinations serially (identical results, slower)
+        rows = []
+        for i, j in enumerate(jobs, 1):
+            rows.append(_score_combo(j))
+            print(f"  combo {i}/{len(jobs)}: train acc {rows[-1]['train_pointwise_accuracy']:.4f}", flush=True)
     return pd.DataFrame(rows).sort_values("train_pointwise_accuracy", ascending=False)
 
 
@@ -182,6 +188,8 @@ def main() -> None:
     ap.add_argument("--out-dir", type=Path, default=REPO_ROOT / "hmm" / "tuning")
     ap.add_argument("--results-dir", type=Path, default=REPO_ROOT / "experiments" / "results")
     ap.add_argument("--workers", type=int, default=mp.cpu_count())
+    ap.add_argument("--grid-json", type=str, default=None,
+                    help="override GRID with a JSON dict of lists, e.g. emission_weight, distance_scale_m, transition_scale_m")
     ap.add_argument("--write-config", action="store_true", help="write the chosen weights to hmm/config.yaml")
     ap.add_argument("--reference-run-dir", type=Path, default=None,
                     help="committed harness run that --proba-dir reproduces (its metrics are compared and recorded)")
@@ -200,9 +208,10 @@ def main() -> None:
     print(f"prepared in {time.perf_counter() - t0:.1f}s", flush=True)
 
     # 1) emission weight x GPS-noise scale x transition scale
-    combos = [dict(zip(GRID, v)) for v in itertools.product(*GRID.values())]
+    grid_def = json.loads(a.grid_json) if a.grid_json else GRID
+    combos = [dict(zip(grid_def, v)) for v in itertools.product(*grid_def.values())]
     grid = grid_search(base, combos, a.workers)
-    best = grid.iloc[0][list(GRID)].to_dict()
+    best = grid.iloc[0][list(grid_def)].to_dict()
     print("best emission/transition weights:", best, f"train acc {grid.iloc[0].train_pointwise_accuracy:.4f}", flush=True)
 
     # 2) unreachable-transition penalty, at those weights

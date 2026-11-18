@@ -5,3 +5,6 @@ logs/runs.csv
 logs/*/*.parquet
 # model copies live in models/final; run-folder copies are not committed
 logs/*/model.joblib
+# feature tables are rebuilt locally (adapt_team_table.py, context_features.py); never committed
+team_table/
+team_table_v2/

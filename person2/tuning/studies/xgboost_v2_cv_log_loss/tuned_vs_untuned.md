@@ -1,0 +1,4 @@
+                                                       run_id cv_macro_f1_mean cv_macro_f1_std student_test_top1 student_test_macro_f1 student_test_log_loss inference_ms_per_trip inference_ms_per_1k_candidates train_time_s
+untuned                       20261118-181708_xgboost_untuned         0.907103        0.033443          0.846555              0.922749              0.057141               18.3545                       0.662708    22.372878
+tuned                           20261118-181912_xgboost_tuned         0.908546        0.032549          0.847182              0.923637                0.0549              27.57838                       0.995746    28.737269
+difference (tuned - untuned)                              NaN         0.001443       -0.000895          0.000626              0.000888             -0.002241               9.22388                       0.333038     6.364391

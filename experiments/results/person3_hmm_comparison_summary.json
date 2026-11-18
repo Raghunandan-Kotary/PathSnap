@@ -1,26 +1,26 @@
 {
   "decoder_params": {
-    "disconnect_penalty": 10.0,
+    "disconnect_penalty": 25.0,
     "gap_threshold_s": 30.0,
     "dijkstra_cutoff_m": 1000.0,
-    "backtrack_tolerance_m": 50.0,
+    "backtrack_tolerance_m": 25.0,
     "emission_blend": "log_linear",
-    "emission_weight": 0.25,
-    "distance_scale_m": 7.0,
+    "emission_weight": 0.35,
+    "distance_scale_m": 5.5,
     "transition_scale_m": 10.0
   },
   "probabilities": {
-    "run_id": "20261118-103837_xgboost_tuned",
+    "run_id": "20261118-181912_xgboost_tuned",
     "model": "xgboost",
     "params": {
-      "n_estimators": 450,
-      "max_depth": 6,
-      "learning_rate": 0.010188264879353223,
-      "subsample": 0.5229934638995568,
-      "colsample_bytree": 0.9505987184492066,
-      "min_child_weight": 1.2506071764134843,
-      "reg_lambda": 0.0109328837351381,
-      "gamma": 1.18353047747752
+      "n_estimators": 300,
+      "max_depth": 9,
+      "learning_rate": 0.011184288096430784,
+      "subsample": 0.6628447051922413,
+      "colsample_bytree": 0.9546795356956396,
+      "min_child_weight": 4.152026543508315,
+      "reg_lambda": 0.11745573977842999,
+      "gamma": 3.451235367845726
     },
     "calibration": null,
     "train": "out-of-fold (trip-grouped 5-fold CV)",
@@ -28,120 +28,97 @@
   },
   "tuning": {
     "objective": "pooled pointwise accuracy on the 80 training trips (out-of-fold probabilities)",
-    "combinations_tried": 45
+    "combinations_tried": 36
   },
-  "reproduces": {
-    "reference_run_id": "20261118-151126_xgboost_tuned",
-    "cv_macro_f1_mean": [
-      0.7918213415954648,
-      0.7919783101224611
-    ],
-    "student_test_top1_acc": [
-      0.7251565762004175,
-      0.7252609603340292
-    ],
-    "student_test_macro_f1": [
-      0.8155355941914272,
-      0.8157038270400627
-    ],
-    "student_test_log_loss": [
-      0.10805854067365309,
-      0.10800519496354856
-    ],
-    "student_test_ece": [
-      0.0038526990302749954,
-      0.0037772139137760203
-    ],
-    "note": "[reproduced, logged]; same table, params and seed; differences come from multi-threaded XGBoost"
-  },
+  "reproduces": null,
   "train_out_of_fold": {
     "classifier_only": {
-      "pointwise_accuracy": 0.6459645806244212,
-      "route_continuity": 0.8680887216384992,
-      "arc_change_continuity": 0.700145115710685,
-      "sequence_score": 0.55564625,
-      "sequence_coverage": 0.84925,
-      "sequence_precision": 0.68474125,
+      "pointwise_accuracy": 0.772657700667412,
+      "route_continuity": 0.9261772992795326,
+      "arc_change_continuity": 0.7212707733014372,
+      "sequence_score": 0.7530637499999999,
+      "sequence_coverage": 0.9691200000000002,
+      "sequence_precision": 0.8120974999999999,
       "n_trips": 80,
       "n_observations": 208417
     },
     "hmm_classifier": {
-      "pointwise_accuracy": 0.7821195008084754,
-      "route_continuity": 0.9705477183601569,
-      "arc_change_continuity": 0.8301735351913869,
-      "sequence_score": 0.792365,
-      "sequence_coverage": 0.94566625,
-      "sequence_precision": 0.8535012500000001,
+      "pointwise_accuracy": 0.7983657763042362,
+      "route_continuity": 0.9735476655610861,
+      "arc_change_continuity": 0.8457469140985809,
+      "sequence_score": 0.8155899999999999,
+      "sequence_coverage": 0.9738925,
+      "sequence_precision": 0.86882625,
       "n_trips": 80,
       "n_observations": 208417
     },
     "hmm_distance_only": {
-      "pointwise_accuracy": 0.7870807083875115,
-      "route_continuity": 0.9711717073779501,
-      "arc_change_continuity": 0.8397160470764058,
-      "sequence_score": 0.79440625,
-      "sequence_coverage": 0.9667625000000001,
-      "sequence_precision": 0.84217,
+      "pointwise_accuracy": 0.7884001784883191,
+      "route_continuity": 0.9714453025626749,
+      "arc_change_continuity": 0.8411269862464948,
+      "sequence_score": 0.7925324999999999,
+      "sequence_coverage": 0.966015,
+      "sequence_precision": 0.83752125,
       "n_trips": 80,
       "n_observations": 208417
     },
     "outcomes_vs_classifier_only": {
-      "fixed_by_hmm": 32955,
-      "broken_by_hmm": 4578,
-      "both_right": 130052,
-      "both_wrong": 40832,
+      "fixed_by_hmm": 10587,
+      "broken_by_hmm": 5229,
+      "both_right": 155806,
+      "both_wrong": 36795,
       "both_wrong_true_arc_not_a_candidate": 18273,
-      "broken_within_3_obs_of_segment_start": 39
+      "broken_within_3_obs_of_segment_start": 41
     },
     "decode_timing": {
-      "prepare_s_mean_per_trip": 0.2822673972874782,
-      "viterbi_s_mean_per_trip": 0.05095176289999585,
-      "ms_per_1k_obs_total": 127.90479094794533
+      "prepare_s_mean_per_trip": 0.3273958825011505,
+      "viterbi_s_mean_per_trip": 0.04394068124747719,
+      "ms_per_1k_obs_total": 142.53599802266712
     }
   },
   "student_test": {
     "classifier_only": {
-      "pointwise_accuracy": 0.7251565762004175,
-      "route_continuity": 0.878485639686684,
-      "arc_change_continuity": 0.6685657313772967,
-      "sequence_score": 0.55039,
-      "sequence_coverage": 0.8382,
-      "sequence_precision": 0.70644,
+      "pointwise_accuracy": 0.8471816283924843,
+      "route_continuity": 0.9336292428198434,
+      "arc_change_continuity": 0.7538729666924865,
+      "sequence_score": 0.77346,
+      "sequence_coverage": 0.97355,
+      "sequence_precision": 0.8460799999999999,
       "n_trips": 10,
       "n_observations": 19160
     },
     "hmm_classifier": {
-      "pointwise_accuracy": 0.8536012526096033,
-      "route_continuity": 0.9696083550913838,
-      "arc_change_continuity": 0.8353606789250354,
-      "sequence_score": 0.83639,
-      "sequence_coverage": 0.94596,
-      "sequence_precision": 0.8757699999999999,
+      "pointwise_accuracy": 0.8727557411273487,
+      "route_continuity": 0.9742558746736293,
+      "arc_change_continuity": 0.8640375068946498,
+      "sequence_score": 0.86331,
+      "sequence_coverage": 0.9810399999999999,
+      "sequence_precision": 0.8912700000000001,
       "n_trips": 10,
       "n_observations": 19160
     },
     "hmm_distance_only": {
-      "pointwise_accuracy": 0.8585073068893528,
-      "route_continuity": 0.9732114882506527,
-      "arc_change_continuity": 0.8610132755350853,
-      "sequence_score": 0.84418,
-      "sequence_coverage": 0.97421,
-      "sequence_precision": 0.8668099999999999,
+      "pointwise_accuracy": 0.8599164926931107,
+      "route_continuity": 0.9723759791122716,
+      "arc_change_continuity": 0.8574123989218329,
+      "sequence_score": 0.84246,
+      "sequence_coverage": 0.9710600000000001,
+      "sequence_precision": 0.8659100000000001,
       "n_trips": 10,
       "n_observations": 19160
     },
     "outcomes_vs_classifier_only": {
-      "fixed_by_hmm": 2909,
-      "broken_by_hmm": 448,
-      "both_right": 13446,
-      "both_wrong": 2357,
+      "fixed_by_hmm": 995,
+      "broken_by_hmm": 505,
+      "both_right": 15727,
+      "both_wrong": 1933,
       "both_wrong_true_arc_not_a_candidate": 486,
-      "broken_within_3_obs_of_segment_start": 4
+      "broken_within_3_obs_of_segment_start": 5
     },
     "decode_timing": {
-      "prepare_s_mean_per_trip": 0.15662544009996965,
-      "viterbi_s_mean_per_trip": 0.0364497577000293,
-      "ms_per_1k_obs_total": 100.7699362212938
+      "prepare_s_mean_per_trip": 0.14534852999495343,
+      "viterbi_s_mean_per_trip": 0.0384507000038866,
+      "ms_per_1k_obs_total": 95.92861690962422
     }
   }
 }

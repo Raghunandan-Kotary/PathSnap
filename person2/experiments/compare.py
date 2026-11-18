@@ -47,7 +47,8 @@ def collect(log_dir: Path) -> pd.DataFrame:
         t = m["student_test"]
         rows.append({
             "run_id": cfg["run_id"], "timestamp": cfg["timestamp"], "smoke": cfg.get("smoke", False),
-            "role": cfg.get("role", "baseline"), "label": label_of(cfg), "model": cfg["model"], "family": cfg["family"],
+            "role": cfg.get("role", "baseline"), "label": label_of(cfg),
+            "feature_set": "v2" if any(c.startswith("f2_") for c in cfg["feature_cols"]) else "v1", "model": cfg["model"], "family": cfg["family"],
             "calibration": cfg.get("calibration"), "key_config": json.dumps(cfg["params"], sort_keys=True),
             "cv_macro_f1_mean": m["cv_macro_f1_mean"], "cv_macro_f1_std": m["cv_macro_f1_std"],
             "cv_fold_macro_f1": m["cv_per_fold_macro_f1"], "cv_log_loss_mean": m["cv_log_loss_mean"],
@@ -188,6 +189,8 @@ def main() -> None:
     ap.add_argument("--roles", nargs="+", default=["baseline"],
                     help="which run roles form the comparison table (default: baseline). Add calibration_variant to see them.")
     ap.add_argument("--include-smoke", action="store_true")
+    ap.add_argument("--feature-set", choices=["v1", "v2", "any"], default="any",
+                    help="v1 = the 5 frozen features, v2 = frozen + context features (experiments/context_features.py)")
     a = ap.parse_args()
 
     runs = collect(a.log_dir)
@@ -197,6 +200,8 @@ def main() -> None:
         runs = runs[~runs.smoke]
         if runs.empty:
             sys.exit("only smoke runs found; pass --include-smoke to inspect them (never report them)")
+    if a.feature_set != "any":
+        runs = runs[runs.feature_set == a.feature_set]
     a.out_dir.mkdir(parents=True, exist_ok=True)
     runs.drop(columns=["cv_fold_macro_f1", "run_dir"]).to_csv(a.out_dir / "all_runs.csv", index=False)  # run_dir is a local absolute path
     sel = pick_runs(runs, a.roles)

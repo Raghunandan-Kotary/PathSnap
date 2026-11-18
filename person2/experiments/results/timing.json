@@ -1,5 +1,5 @@
 {
-  "measured": "2026-11-18T15:20:22",
+  "measured": "2026-11-18T18:41:39",
   "repeats": 5,
   "seed": 42,
   "features": [
@@ -7,7 +7,15 @@
     "feat_arc_length",
     "feat_heading_diff",
     "feat_speed",
-    "feat_time_gap"
+    "feat_time_gap",
+    "f2_proj_frac",
+    "f2_end_dist",
+    "f2_cos_heading",
+    "f2_ctx_dist",
+    "f2_dist_minus_min",
+    "f2_ctx_minus_min",
+    "f2_dist_rank",
+    "f2_n_cand"
   ],
   "n_test_trips": 10,
   "n_test_candidates": 276962,

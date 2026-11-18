@@ -83,6 +83,11 @@ class PathSnapPipeline:
         
         from features.extract_features import generate_trip_candidates_and_features
         candidates_df = generate_trip_candidates_and_features(track_df, nodes_df, arcs_df)
+        # v2 context features (person2/experiments/context_features.py): computed from the raw GPS and road
+        # files only, with the same function used to build the training table, so live features match training.
+        if self.model is not None and not candidates_df.empty and any(c.startswith("f2_") for c in self.model.feature_cols):
+            from person2.experiments.context_features import add_context_features
+            candidates_df = add_context_features(candidates_df, track_df, nodes_df)
         t_feat = (time.perf_counter() - t_feat_start) * 1000
 
         # 3. Model Scoring & 4. Decoding
@@ -154,7 +159,7 @@ class PathSnapPipeline:
                     ground_truth_arcs=None,  # this HTML goes to the UI: no reference route in it
                     trip_id=trip_id
                 )
-                map_html = folium_map._repr_html_()
+                map_html = folium_map.get_root().render()  # standalone HTML: _repr_html_ only renders inside Jupyter
             except Exception as map_err:
                 api_logger.warning(f"Folium map generation failed: {map_err}")
                 map_html = None

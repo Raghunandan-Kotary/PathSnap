@@ -1,0 +1,73 @@
+{
+  "run_id": "20261118-173150_gaussian_nb",
+  "timestamp": "2026-11-18T17:32:03",
+  "smoke": false,
+  "tag": "",
+  "role": "baseline",
+  "model": "gaussian_nb",
+  "family": "Probabilistic (generative, Naive Bayes)",
+  "params": {
+    "var_smoothing": 1e-09
+  },
+  "calibration": null,
+  "threshold": 0.5,
+  "seed": 42,
+  "cv_folds": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "n_train_trips": 80,
+  "n_test_trips": 10,
+  "n_train_candidates": 2546809,
+  "n_test_candidates": 276962,
+  "feature_cols": [
+    "feat_dist_to_arc",
+    "feat_arc_length",
+    "feat_heading_diff",
+    "feat_speed",
+    "feat_time_gap",
+    "f2_proj_frac",
+    "f2_end_dist",
+    "f2_cos_heading",
+    "f2_ctx_dist",
+    "f2_dist_minus_min",
+    "f2_ctx_minus_min",
+    "f2_dist_rank",
+    "f2_n_cand"
+  ],
+  "label_stats": {
+    "student_test": {
+      "candidates": 276962,
+      "positive_rate": 0.06742441201320036,
+      "observations_with_candidates": 19160,
+      "mean_candidates_per_obs": 14.455219206680585,
+      "mean_positives_per_obs": 0.9746346555323591,
+      "obs_with_zero_positive": 0.025365344467640917,
+      "obs_with_one_positive": 0.9746346555323591,
+      "obs_with_2plus_positive": 0.0
+    },
+    "train": {
+      "candidates": 2546809,
+      "positive_rate": 0.07465970161091783,
+      "observations_with_candidates": 208417,
+      "mean_candidates_per_obs": 12.219775738063595,
+      "mean_positives_per_obs": 0.912324810356161,
+      "obs_with_zero_positive": 0.08767518964383904,
+      "obs_with_one_positive": 0.912324810356161,
+      "obs_with_2plus_positive": 0.0
+    }
+  },
+  "table_path": "experiments/team_table_v2/candidates_features.parquet",
+  "table_sha1": "b1c634b3d529c446ae9eb73b6b5cd8c7fd967aa2",
+  "versions": {
+    "python": "3.11.9",
+    "numpy": "2.4.6",
+    "pandas": "3.0.6",
+    "sklearn": "1.9.1",
+    "xgboost": "3.2.0",
+    "lightgbm": "4.7.0"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "partition": "evaluator_test",
+  "evaluated": "2026-11-18T19:02:27",
+  "n_trips": 10,
+  "execution_modes": {
+    "model_plus_viterbi": 10
+  },
+  "pooled_pointwise_accuracy": 0.8715563688116296,
+  "mean_trip_accuracy": 0.8922799999999999,
+  "mean_route_continuity": 0.94479,
+  "model_artifact": "True",
+  "definition": "evaluation/route_metrics.py::compute_route_metrics (per-observation reference arc)"
+}

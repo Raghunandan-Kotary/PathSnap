@@ -41,7 +41,10 @@ def screenshot(html_path: Path, png_path: Path) -> None:
         subprocess.run(["node", "-e", js], check=True)
         return
     with sync_playwright() as p:
-        browser = p.chromium.launch()
+        try:
+            browser = p.chromium.launch()
+        except Exception:  # bundled Chromium not downloaded: use the installed Edge (Windows) instead
+            browser = p.chromium.launch(channel="msedge")
         page = browser.new_page(viewport={"width": 1100, "height": 760}, device_scale_factor=2)
         page.goto(html_path.resolve().as_uri(), wait_until="networkidle")
         page.wait_for_timeout(1500)

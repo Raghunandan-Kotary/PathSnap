@@ -1,0 +1,24 @@
+{
+  "model": "xgboost",
+  "objective": "cv_log_loss",
+  "direction": "minimize",
+  "best_value": 0.07397630251406292,
+  "best_trial_number": 6,
+  "params": {
+    "n_estimators": 300,
+    "max_depth": 9,
+    "learning_rate": 0.011184288096430784,
+    "subsample": 0.6628447051922413,
+    "colsample_bytree": 0.9546795356956396,
+    "min_child_weight": 4.152026543508315,
+    "reg_lambda": 0.11745573977842999,
+    "gamma": 3.451235367845726
+  },
+  "user_attrs": {
+    "cv_log_loss_mean": 0.07397630251406292,
+    "cv_macro_f1_mean": 0.9085460252878599,
+    "cv_macro_f1_std": 0.03254858009447901,
+    "cv_top1_mean": 0.7650239556648484,
+    "fit_time_total_s": 125.54948899999727
+  }
+}

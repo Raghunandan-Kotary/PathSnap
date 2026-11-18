@@ -1,0 +1,11 @@
+trip_id,execution_mode,observations,matched,pointwise_accuracy,route_continuity,total_latency_ms
+00000015,model_plus_viterbi,6854,5393,0.7868,0.9945,948.39
+00000017,model_plus_viterbi,1346,1289,0.9577,0.8818,741.74
+00000023,model_plus_viterbi,458,370,0.8079,0.8884,191.07
+00000030,model_plus_viterbi,654,566,0.8654,0.8959,326.44
+00000049,model_plus_viterbi,2642,2477,0.9375,0.9724,479.88
+00000059,model_plus_viterbi,1031,961,0.9321,0.9146,420.83
+00000067,model_plus_viterbi,916,790,0.8624,0.9836,230.45
+00000073,model_plus_viterbi,1144,1069,0.9344,0.9729,280.23
+00000087,model_plus_viterbi,1399,1304,0.9321,0.9692,708.77
+00000094,model_plus_viterbi,3230,2928,0.9065,0.9746,616.87
