@@ -43,7 +43,7 @@ api_base_url = st.sidebar.text_input(
 # Connection Check
 if st.sidebar.button("Test API Connection"):
     try:
-        resp = requests.get(f"{api_base_url}/health", timeout=3)
+        resp = requests.get(f"{api_base_url}/health", timeout=10)
         if resp.status_code == 200:
             st.sidebar.success(f"Connected! API v{resp.json().get('version', '1.0')}")
         else:
@@ -65,7 +65,7 @@ st.markdown('<div class="subtitle">Real-time GPS trajectory map-matching via ML 
 @st.cache_data(ttl=15)
 def get_trips(base_url: str):
     try:
-        r = requests.get(f"{base_url}/trips", timeout=3)
+        r = requests.get(f"{base_url}/trips", timeout=10)
         if r.status_code == 200:
             return r.json().get("trips", [])
     except Exception:
@@ -92,7 +92,7 @@ if run_eval and selected_trip:
     with st.spinner(f"Sending Trip {selected_trip} to Laptop 1 for map-matching & evaluation..."):
         try:
             t0 = time.time()
-            res = requests.post(f"{api_base_url}/predict/{selected_trip}", timeout=30)
+            res = requests.post(f"{api_base_url}/predict/{selected_trip}", timeout=180)
             network_latency = (time.time() - t0) * 1000
             
             if res.status_code == 200:
