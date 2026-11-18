@@ -1,0 +1,26 @@
+[
+  {
+    "model_name": "RandomForest",
+    "cv_macro_f1_mean": 0.6586447912680071,
+    "cv_macro_f1_std": 0.007921148575869494,
+    "cv_top1_acc_mean": 0.4162704586032594,
+    "training_time_s": 244.085,
+    "random_seed": 42,
+    "student_test_top1_acc": 0.4594989561586639,
+    "student_test_macro_f1": 0.6634916931296827,
+    "student_test_log_loss": 0.3997515840295867,
+    "inference_time_ms": 244.4
+  },
+  {
+    "model_name": "CalibratedLinearSVM",
+    "cv_macro_f1_mean": 0.5232464440786025,
+    "cv_macro_f1_std": 0.024985359134355793,
+    "cv_top1_acc_mean": 0.38597588769298385,
+    "training_time_s": 15.33,
+    "random_seed": 42,
+    "student_test_top1_acc": 0.4155010438413361,
+    "student_test_macro_f1": 0.5566579187406381,
+    "student_test_log_loss": 0.27405346713871304,
+    "inference_time_ms": 26.39
+  }
+]

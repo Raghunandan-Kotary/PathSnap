@@ -1,0 +1,11 @@
+# PathSnap HMM/Viterbi decoder configuration (Person 3)
+#
+# Tuned on train + student_test data only, never on evaluator_test.
+# emission_weight: 1.0 = classifier probability only; 0.0 = distance-only
+# stand-in. Loaded automatically whenever probabilities=None is passed to
+# ViterbiRouteDecoder.decode(), so the decoder works before any model exists.
+emission_weight: 0.7
+distance_scale_m: 30.0
+transition_scale_m: 50.0
+disconnect_penalty: 25.0
+gap_threshold_s: 10.0
