@@ -7,7 +7,7 @@ import pandas as pd
 
 from api.config import settings
 from api.schemas import PredictionResponse, RouteMetricsResponse, TimingBreakdown
-from evaluation.route_metrics import compute_route_metrics
+from evaluation.route_metrics import align_route_to_observations, compute_route_metrics
 
 try:
     from maps.folium_generator import generate_folium_map
@@ -107,7 +107,13 @@ class PathSnapPipeline:
         t_decode = (time.perf_counter() - t_decode_start) * 1000
 
         # 5. Server-Side Ground Truth Evaluation (NEVER leaks to UI)
-        raw_metrics = compute_route_metrics(predicted_arcs, gt_arcs, arcs_df)
+        # gt_arcs is the raw .route file -- the ordered list of DISTINCT arcs
+        # traversed, much shorter than predicted_arcs (one per GPS fix) and
+        # not index-aligned with it. Align it to one arc per observation
+        # first, or a positional comparison against predicted_arcs is
+        # comparing unrelated sequences (see align_route_to_observations).
+        gt_arcs_aligned = align_route_to_observations(track_df, nodes_df, arcs_df, gt_arcs)
+        raw_metrics = compute_route_metrics(predicted_arcs, gt_arcs_aligned, arcs_df)
         metrics = RouteMetricsResponse(
             pointwise_top1_accuracy=raw_metrics["pointwise_top1_accuracy"],
             route_continuity=raw_metrics["route_continuity"],

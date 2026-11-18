@@ -1,5 +1,5 @@
 """
-Model 3 (Person 2): Random Forest Ensemble Classifier.
+Model 3 (Person 3): Random Forest Ensemble Classifier.
 Algorithm Family: Tree Ensemble
 """
 from sklearn.ensemble import RandomForestClassifier

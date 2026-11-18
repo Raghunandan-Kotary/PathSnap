@@ -1,16 +1,173 @@
 """
-Folium Geographical Map Generator for PathSnap.
-Renders interactive HTML maps with layer controls:
-- Layer 1: Raw GPS Observations (Blue CircleMarkers)
-- Layer 2: Road Network Geometry (Subtle Gray lines)
-- Layer 3: Reference Route (Green PolyLine - Ground Truth)
-- Layer 4: Predicted Reconstructed Route (Red PolyLine)
+Folium map generation for PathSnap (Person 3).
+
+Builds one interactive map per trip with four toggleable layers: raw GPS
+points, the road network, the reference route (server-side only) and the
+predicted route, per docs/INTERFACES.md Interface 4.2.
 """
+from pathlib import Path
 from typing import List, Optional
+
 import folium
-from folium import plugins
-import pandas as pd
 import numpy as np
+import pandas as pd
+from scipy.spatial import cKDTree
+
+from data.preprocessor import project_coords
+
+GPS_COLOR = "#1E88E5"       # blue dots: raw GPS
+ROAD_COLOR = "#9E9E9E"      # gray lines: road network
+REFERENCE_COLOR = "#2E7D32"  # green line: reference route
+PREDICTED_COLOR = "#D32F2F"  # red line: predicted route
+
+
+def _arc_coords(arc_id: int, nodes_df: pd.DataFrame, arcs_df: pd.DataFrame) -> Optional[tuple]:
+    if arc_id < 0 or arc_id >= len(arcs_df):
+        return None
+    arc = arcs_df.iloc[arc_id]
+    frm, to = nodes_df.iloc[int(arc["from_node"])], nodes_df.iloc[int(arc["to_node"])]
+    return (frm["lat"], frm["lon"]), (to["lat"], to["lon"])
+
+
+def _arcs_near_track(
+    track_df: pd.DataFrame, nodes_df: pd.DataFrame, arcs_df: pd.DataFrame, radius_m: float
+) -> "np.ndarray":
+    """
+    Boolean mask over arcs_df of arcs whose midpoint lies within radius_m of
+    *any* GPS point. Needed because a long trip's bounding box can cover
+    almost the whole region-wide .nodes/.arcs extract (tens of thousands of
+    arcs), while the road actually touched by the trip is a thin corridor
+    around the GPS trace. (A `max_network_arcs` cap on an unfiltered scan
+    would instead render an arbitrary, possibly-unrelated subset -- this
+    scales with the real trajectory rather than cutting off at a fixed
+    arc count.)
+    """
+    ref_lon, ref_lat = nodes_df["lon"].median(), nodes_df["lat"].median()
+    node_x, node_y = project_coords(nodes_df["lon"].values, nodes_df["lat"].values, ref_lon, ref_lat)
+
+    from_idx, to_idx = arcs_df["from_node"].values, arcs_df["to_node"].values
+    mid_x = (node_x[from_idx] + node_x[to_idx]) / 2.0
+    mid_y = (node_y[from_idx] + node_y[to_idx]) / 2.0
+    arc_tree = cKDTree(np.column_stack([mid_x, mid_y]))
+
+    track_x, track_y = project_coords(track_df["lon"].values, track_df["lat"].values, ref_lon, ref_lat)
+    nearby_lists = arc_tree.query_ball_point(np.column_stack([track_x, track_y]), r=radius_m)
+
+    mask = np.zeros(len(arcs_df), dtype=bool)
+    for idx_list in nearby_lists:
+        mask[idx_list] = True
+    return mask
+
+
+def _build_map(
+    track_df: pd.DataFrame,
+    nodes_df: pd.DataFrame,
+    arcs_df: pd.DataFrame,
+    predicted_route: List[int],
+    ground_truth_route: Optional[List[int]] = None,
+    road_corridor_radius_m: float = 150.0,
+) -> folium.Map:
+    """Builds the folium.Map object (shared by generate_trip_map and generate_folium_map)."""
+    center_lat, center_lon = track_df["lat"].mean(), track_df["lon"].mean()
+    fmap = folium.Map(
+        location=[center_lat, center_lon], zoom_start=14, tiles="OpenStreetMap", prefer_canvas=True
+    )
+
+    gps_layer = folium.FeatureGroup(name="Raw GPS points", show=True)
+    for _, row in track_df.iterrows():
+        folium.CircleMarker(
+            location=[row["lat"], row["lon"]],
+            radius=2,
+            color=GPS_COLOR,
+            fill=True,
+            fill_opacity=0.8,
+            weight=1,
+            tooltip=f"t={row['time']}s",
+        ).add_to(gps_layer)
+    gps_layer.add_to(fmap)
+
+    # The .nodes/.arcs files are a region-wide network extract -- often
+    # 10,000-150,000+ arcs -- while even a long trip only ever touches a
+    # thin corridor of it (a bounding-box filter doesn't help: a cross-city
+    # trip's bbox can cover almost the entire extract). Drawing every arc
+    # would make the map unusably slow and the HTML file enormous, so only
+    # arcs within road_corridor_radius_m of some GPS point are rendered.
+    in_view = _arcs_near_track(track_df, nodes_df, arcs_df, road_corridor_radius_m)
+    from_lat = nodes_df["lat"].values[arcs_df["from_node"].values]
+    from_lon = nodes_df["lon"].values[arcs_df["from_node"].values]
+    to_lat = nodes_df["lat"].values[arcs_df["to_node"].values]
+    to_lon = nodes_df["lon"].values[arcs_df["to_node"].values]
+
+    road_layer = folium.FeatureGroup(name="Road network", show=True)
+    for flat, flon, tlat, tlon in zip(from_lat[in_view], from_lon[in_view], to_lat[in_view], to_lon[in_view]):
+        folium.PolyLine(
+            locations=[(flat, flon), (tlat, tlon)],
+            color=ROAD_COLOR,
+            weight=1,
+            opacity=0.5,
+        ).add_to(road_layer)
+    road_layer.add_to(fmap)
+
+    if ground_truth_route:
+        gt_layer = folium.FeatureGroup(name="Reference route", show=True)
+        for arc_id in ground_truth_route:
+            coords = _arc_coords(arc_id, nodes_df, arcs_df)
+            if coords:
+                folium.PolyLine(coords, color=REFERENCE_COLOR, weight=4, opacity=0.9).add_to(gt_layer)
+        gt_layer.add_to(fmap)
+
+    pred_layer = folium.FeatureGroup(name="Predicted route", show=True)
+    for arc_id in predicted_route:
+        coords = _arc_coords(arc_id, nodes_df, arcs_df)
+        if coords:
+            folium.PolyLine(coords, color=PREDICTED_COLOR, weight=4, opacity=0.9, dash_array="6,4").add_to(pred_layer)
+    pred_layer.add_to(fmap)
+
+    folium.LayerControl(collapsed=False).add_to(fmap)
+    _add_legend(fmap, show_reference=bool(ground_truth_route))
+
+    # Bound on the GPS track, not the full road-network node table: the
+    # .nodes file is a region-wide extract that typically covers a much
+    # larger area than any single trip, so including it here would zoom
+    # out far past the actual route.
+    fmap.fit_bounds([
+        [track_df["lat"].min(), track_df["lon"].min()],
+        [track_df["lat"].max(), track_df["lon"].max()],
+    ])
+    return fmap
+
+
+def generate_trip_map(
+    track_df: pd.DataFrame,
+    nodes_df: pd.DataFrame,
+    arcs_df: pd.DataFrame,
+    predicted_route: List[int],
+    ground_truth_route: Optional[List[int]] = None,
+    save_path: Optional[Path] = None,
+    road_corridor_radius_m: float = 150.0,
+) -> str:
+    """
+    Returns the map as an HTML string (suitable for embedding directly in
+    the Streamlit UI via `st.components.v1.html`, per `map_html` in
+    api/schemas.py). If `save_path` is given, also writes the same HTML
+    there (e.g. maps/html/<trip_id>.html) for static serving.
+
+    Layers (toggleable via LayerControl):
+      - Raw GPS points (blue dots)
+      - Road network (gray lines)
+      - Reference route (green line) -- only if ground_truth_route is given;
+        omit when calling from anywhere the UI can see the response (ground
+        truth must never leave the server, per docs/SYSTEM_ARCHITECTURE.md).
+      - Predicted route (red line)
+    """
+    fmap = _build_map(track_df, nodes_df, arcs_df, predicted_route, ground_truth_route, road_corridor_radius_m)
+    html = fmap.get_root().render()
+    if save_path is not None:
+        save_path = Path(save_path)
+        save_path.parent.mkdir(parents=True, exist_ok=True)
+        save_path.write_text(html, encoding="utf-8")
+    return html
+
 
 def generate_folium_map(
     track_df: pd.DataFrame,
@@ -19,117 +176,37 @@ def generate_folium_map(
     predicted_arcs: List[int],
     ground_truth_arcs: Optional[List[int]] = None,
     trip_id: str = "Trip",
-    max_network_arcs: int = 600
 ) -> folium.Map:
     """
-    Generates an interactive Folium map centered on the trajectory.
+    Alias matching api/pipeline.py's actual call signature (kwargs
+    predicted_arcs/ground_truth_arcs/trip_id, a folium.Map return value
+    rendered there via `.repr_html_()`) rather than docs/INTERFACES.md's
+    documented generate_trip_map. Same map; just the object instead of
+    pre-rendered HTML.
     """
-    # Calculate bounding box and center
-    center_lat = float(track_df["lat"].median())
-    center_lon = float(track_df["lon"].median())
-    
-    m = folium.Map(
-        location=[center_lat, center_lon],
-        zoom_start=14,
-        tiles="OpenStreetMap"
+    fmap = _build_map(track_df, nodes_df, arcs_df, predicted_arcs, ground_truth_arcs)
+    fmap.get_root().html.add_child(folium.Element(f'<div style="display:none">{trip_id}</div>'))
+    return fmap
+
+
+def _add_legend(fmap: folium.Map, show_reference: bool) -> None:
+    reference_row = (
+        f'<div><span style="background:{REFERENCE_COLOR};width:14px;height:4px;'
+        'display:inline-block;margin-right:6px;"></span>Reference route</div>'
+        if show_reference else ""
     )
-    
-    # 1. Road Network Layer (Background context)
-    fg_network = folium.FeatureGroup(name="Road Network (Context)", show=False)
-    # Filter road arcs near the trip bounding box
-    min_lat, max_lat = track_df["lat"].min() - 0.005, track_df["lat"].max() + 0.005
-    min_lon, max_lon = track_df["lon"].min() - 0.005, track_df["lon"].max() + 0.005
-    
-    sampled_count = 0
-    for arc_id in range(len(arcs_df)):
-        u = int(arcs_df.iloc[arc_id]["from_node"])
-        v = int(arcs_df.iloc[arc_id]["to_node"])
-        if u < len(nodes_df) and v < len(nodes_df):
-            u_lat, u_lon = nodes_df.iloc[u]["lat"], nodes_df.iloc[u]["lon"]
-            v_lat, v_lon = nodes_df.iloc[v]["lat"], nodes_df.iloc[v]["lon"]
-            if (min_lat <= u_lat <= max_lat and min_lon <= u_lon <= max_lon):
-                folium.PolyLine(
-                    locations=[(u_lat, u_lon), (v_lat, v_lon)],
-                    color="#9CA3AF",
-                    weight=1.5,
-                    opacity=0.6,
-                    tooltip=f"Arc {arc_id}"
-                ).add_to(fg_network)
-                sampled_count += 1
-                if sampled_count >= max_network_arcs:
-                    break
-    fg_network.add_to(m)
-
-    # 2. Reference Route (Ground Truth) Layer
-    if ground_truth_arcs and len(ground_truth_arcs) > 0:
-        fg_gt = folium.FeatureGroup(name="Reference Route (Ground Truth)", show=True)
-        gt_coords = []
-        for arc_id in ground_truth_arcs:
-            if arc_id < len(arcs_df):
-                u = int(arcs_df.iloc[arc_id]["from_node"])
-                v = int(arcs_df.iloc[arc_id]["to_node"])
-                if u < len(nodes_df) and v < len(nodes_df):
-                    gt_coords.append((nodes_df.iloc[u]["lat"], nodes_df.iloc[u]["lon"]))
-                    gt_coords.append((nodes_df.iloc[v]["lat"], nodes_df.iloc[v]["lon"]))
-        if gt_coords:
-            folium.PolyLine(
-                locations=gt_coords,
-                color="#10B981",  # Emerald Green
-                weight=5,
-                opacity=0.85,
-                tooltip=f"Ground Truth Route ({len(ground_truth_arcs)} arcs)"
-            ).add_to(fg_gt)
-        fg_gt.add_to(m)
-
-    # 3. Predicted Route Layer
-    if predicted_arcs and len(predicted_arcs) > 0:
-        fg_pred = folium.FeatureGroup(name="Predicted Route (PathSnap)", show=True)
-        pred_coords = []
-        # Collapse consecutive duplicate arcs for rendering
-        import itertools
-        collapsed_arcs = [k for k, _ in itertools.groupby(predicted_arcs)]
-        for arc_id in collapsed_arcs:
-            if arc_id < len(arcs_df):
-                u = int(arcs_df.iloc[arc_id]["from_node"])
-                v = int(arcs_df.iloc[arc_id]["to_node"])
-                if u < len(nodes_df) and v < len(nodes_df):
-                    pred_coords.append((nodes_df.iloc[u]["lat"], nodes_df.iloc[u]["lon"]))
-                    pred_coords.append((nodes_df.iloc[v]["lat"], nodes_df.iloc[v]["lon"]))
-        if pred_coords:
-            folium.PolyLine(
-                locations=pred_coords,
-                color="#EF4444",  # Crimson Red
-                weight=3.5,
-                opacity=0.9,
-                dash_array="6, 4",
-                tooltip=f"Predicted Reconstructed Route ({len(collapsed_arcs)} arcs)"
-            ).add_to(fg_pred)
-        fg_pred.add_to(m)
-
-    # 4. Raw GPS Observations Layer
-    fg_gps = folium.FeatureGroup(name="Raw GPS Observations (Noisy)", show=True)
-    # Downsample points slightly if trajectory is huge for responsive browser rendering
-    step = max(1, len(track_df) // 400)
-    for idx in range(0, len(track_df), step):
-        row = track_df.iloc[idx]
-        folium.CircleMarker(
-            location=[float(row["lat"]), float(row["lon"])],
-            radius=3,
-            color="#2563EB",  # Royal Blue
-            fill=True,
-            fill_color="#3B82F6",
-            fill_opacity=0.75,
-            tooltip=f"GPS Obs #{idx} | t={row['time']}s"
-        ).add_to(fg_gps)
-    fg_gps.add_to(m)
-
-    # Add Layer Control and Title Legend
-    folium.LayerControl(collapsed=False).add_to(m)
-    
-    # Fit bounds to trajectory
-    m.fit_bounds([
-        [track_df["lat"].min(), track_df["lon"].min()],
-        [track_df["lat"].max(), track_df["lon"].max()]
-    ])
-    
-    return m
+    legend_html = f"""
+    <div style="position: fixed; bottom: 24px; left: 24px; z-index: 9999;
+                background: white; padding: 10px 12px; border-radius: 6px;
+                box-shadow: 0 1px 4px rgba(0,0,0,0.3); font-size: 13px;">
+      <div style="font-weight:600; margin-bottom:4px;">PathSnap map legend</div>
+      <div><span style="background:{GPS_COLOR};width:10px;height:10px;border-radius:50%;
+           display:inline-block;margin-right:6px;"></span>Raw GPS points</div>
+      <div><span style="background:{ROAD_COLOR};width:14px;height:4px;
+           display:inline-block;margin-right:6px;"></span>Road network</div>
+      {reference_row}
+      <div><span style="background:{PREDICTED_COLOR};width:14px;height:4px;
+           display:inline-block;margin-right:6px;"></span>Predicted route</div>
+    </div>
+    """
+    fmap.get_root().html.add_child(folium.Element(legend_html))
