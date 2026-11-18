@@ -6,8 +6,14 @@ Generates:
 3. experiments/results/candidate_miss_rates.csv (audit of candidate generation quality)
 """
 import os
+import sys
 import time
 from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
+
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import GroupKFold
