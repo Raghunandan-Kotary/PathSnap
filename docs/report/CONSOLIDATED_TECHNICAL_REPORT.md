@@ -412,13 +412,17 @@ All 20 trips ran in `model_plus_viterbi` mode (the trained model and the decoder
 
 ## 7.5 API request log (Laptop 1)
 
+Command window of the API server while it receives prediction requests for evaluator trips 00000015 and 00000049 (each request is logged with trip ID, client, latency, accuracy and continuity):
+
+![API server command window](../figures/api_cmd_log.png)
+
 Last entries of `api/logs/requests.log` from the run shown above:
 
 ```
-[2026-11-18 19:13:18] [INFO] [PathSnap] EVALUATOR_REQ | Trip: 00000000 | Client: testclient | Mode: model_plus_viterbi | Latency: 2719.51ms | Top-1 Acc: 90.53% | Continuity: 98.36%
-[2026-11-18 19:13:20] [INFO] [PathSnap] EVALUATOR_REQ | Trip: 00000007 | Client: testclient | Mode: model_plus_viterbi | Latency: 1728.32ms | Top-1 Acc: 99.11% | Continuity: 99.93%
-[2026-11-18 19:13:20] [WARNING] [PathSnap] Trip not found: 99999999 from testclient
-[2026-11-18 19:13:23] [INFO] [PathSnap] EVALUATOR_REQ | Trip: 00000009 | Client: testclient | Mode: model_plus_viterbi | Latency: 2431.36ms | Top-1 Acc: 92.09% | Continuity: 95.04%
+[2026-11-18 19:48:10] [INFO] [PathSnap] PathSnap FastAPI Service started successfully on Laptop 1.
+[2026-11-18 19:48:10] [INFO] [PathSnap] Loaded configuration: Host=0.0.0.0, Port=8000
+[2026-11-18 19:48:14] [INFO] [PathSnap] EVALUATOR_REQ | Trip: 00000015 | Client: 127.0.0.1 | Mode: model_plus_viterbi | Latency: 3948.42ms | Top-1 Acc: 78.68% | Continuity: 99.45%
+[2026-11-18 19:48:17] [INFO] [PathSnap] EVALUATOR_REQ | Trip: 00000049 | Client: 127.0.0.1 | Mode: model_plus_viterbi | Latency: 2283.13ms | Top-1 Acc: 93.75% | Continuity: 97.24%
 ```
 
 # 8. Academic integrity and AI assistance

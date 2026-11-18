@@ -162,6 +162,10 @@ def main() -> None:
     log = [line.replace(str(ROOT), "<repo>") for line in log]  # no local folder names in the public report
     if log:
         w("## 7.5 API request log (Laptop 1)\n")
+        if (ROOT / "docs" / "figures" / "api_cmd_log.png").exists():
+            w("Command window of the API server while it receives prediction requests for evaluator trips 00000015 and 00000049 "
+              "(each request is logged with trip ID, client, latency, accuracy and continuity):\n")
+            w("![API server command window](../figures/api_cmd_log.png)\n")
         w("Last entries of `api/logs/requests.log` from the run shown above:\n")
         w("```\n" + "\n".join(log[-4:]) + "\n```\n")
 
