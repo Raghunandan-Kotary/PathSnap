@@ -3,7 +3,7 @@ Data loading utilities for PathSnap trajectory and road-network files.
 Handles .track, .nodes, .arcs, and .route formats.
 """
 from pathlib import Path
-from typing import Tuple, Optional, List, Dict
+from typing import Tuple, Optional, List, Dict, Any
 import pandas as pd
 
 def load_track(track_path: Path) -> pd.DataFrame:
