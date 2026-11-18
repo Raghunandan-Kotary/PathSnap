@@ -20,7 +20,7 @@ Noisy GPS points are matched to the road network in two stages. A classifier sco
 | Student-test trips | 10 | 0.8728 | 0.8914 | 0.9706 |
 | Evaluator trips | 10 | 0.8716 | 0.8923 | 0.9448 |
 
-The selected classifier is a tuned XGBoost on 13 features (student-test log loss 0.0549, Top-1 0.8472 before decoding). The evaluator trips were scored once, after every choice had been fixed on the training and student-test trips.
+The selected classifier is a tuned XGBoost on 13 features (student-test log loss 0.0549, Top-1 0.8472 before decoding). No model, feature or decoder choice used the evaluator trips; they were run through the finished pipeline.
 
 # 2. Dataset understanding and exploratory data analysis
 
@@ -41,7 +41,8 @@ Source: `experiments/results/dataset_inventory.csv`, `person2/eda/outputs/datase
 
 - **Missing and invalid values.** No GPS, node or arc file has missing or out-of-range values; timestamps never decrease; every GPS point lies inside its trip's road network. No rows were removed.
 - **Coordinates.** Trips lie on several continents (longitude −100.43° to 137.25°, latitude −34.65° to 61.71°), so no single projection fits. Each trip is projected to a local metric plane centred on its own road network; distances in degrees are never used (one degree of longitude is about 111 km at the equator but about 54 km at 61° N).
-- **Sampling.** 96.7% of consecutive GPS steps are exactly 1 s apart; 47 of 90 trips contain gaps above 5 s, the largest 153,064 s. Gaps are kept and handled by the decoder (sequences split at gaps above 30 s).
+- **Sampling.** 96.7% of consecutive GPS steps in the 90 known trips are exactly 1 s apart (96.5% in train, 98.6% in student-test); 47 of 90 trips contain gaps above 5 s, the largest 153,064 s. Gaps are kept and handled by the decoder (sequences split at gaps above 30 s).
+- **GPS noise.** Measured over every GPS point, the median distance to the trip's reference route is 5.6 m on the training trips and 5.2 m on the student-test trips; 87.8% and 99.3% of points lie within 30 m (95th percentile 140 m and 17 m; the long training tail comes from the two trips described below). These numbers come from `person2/eda/make_report_eda_figures.py` (`person2/eda/outputs/report_eda_numbers.json`).
 - **Road networks.** No isolated nodes; 89 of 90 networks have more than one weakly connected component, but every reference route lies inside one component. 9 trips contain 24 self-loop arcs.
 - **Reference routes.** `.route` lists each traversed arc once, so it is not aligned row by row with the GPS file. Each GPS point is assigned its reference arc by a windowed sequential projection onto the route (`features/candidate_generator.py`). In trips 00000054 and 00000033 the GPS points lie a median 139 m and 122 m from the reference route, so about half of their points have no reference arc nearby; the cause was not determined, and those points act as all-negative examples (a label limitation).
 
@@ -52,17 +53,33 @@ For each GPS point, candidate arcs are the arcs within 60 m (KD-tree over arc st
 - *Frozen features (Person 1):* distance to the arc, arc length, heading difference, speed, time gap.
 - *Context features (`person2/experiments/context_features.py`):* where along the arc the point projects and the distance to the arc's nearer end (separates adjacent arcs at junctions), a direction-aware heading smoothed over five GPS points (separates the two directions of a street), the mean distance of the neighbouring GPS points to the arc, and the candidate's distance relative to the other candidates of the same point (difference to the nearest, rank, number of candidates). Section 3.1.1 shows the evidence for adding them.
 
+## 2.4 Visualisations
+
+Each caption states the trips the figure uses.
+
+![Sampling intervals and GPS noise](../figures/report_eda_sampling_and_noise.png)
+
+*Figure 2.1. Sampling intervals and GPS-to-route distance per partition (train: 80 trips, student-test: 10 trips; every GPS point).*
+
+![Training trip 00000003](../figures/report_eda_trajectory_train_00000003.png)
+
+*Figure 2.2. One training trip (00000003, train partition): GPS points, nearby road network and reference route.*
+
+![Folium map of training trip 00000003](../figures/report_eda_folium_train_00000003.png)
+
+*Figure 2.3. Screenshot of the interactive Folium map of the same training trip (`person2/eda/outputs/folium_train_00000003.html`).*
+
 ![GPS points per trip](../figures/eda_trajectory_sizes.png)
 
-![Sampling intervals](../figures/eda_sampling_intervals.png)
+*Figure 2.4. GPS points per trip, all 90 known trips (train and student-test).*
 
-![Geographic spread of the trips](../figures/eda_geographic_spread.png)
+![Geographic spread](../figures/eda_geographic_spread.png)
+
+*Figure 2.5. Geographic spread of all 90 known trips, coloured by partition.*
 
 ![Road network properties](../figures/eda_road_network_properties.png)
 
-![Distance from GPS points to the reference route](../figures/eda_gps_to_route_error.png)
-
-An interactive Folium map of a training trip (GPS points, road network, reference route) is in `person2/eda/outputs/folium_train_00000003.html`.
+*Figure 2.6. Road network properties for four sample trips: 00000001 and 00000005 (train), 00000000 and 00000040 (student-test).*
 
 # 3. Model experimentation and comparison
 
@@ -72,16 +89,16 @@ An interactive Folium map of a training trip (GPS points, road network, referenc
 
 **Features.** 13 per candidate: the 5 frozen features (`feat_dist_to_arc`, `feat_arc_length`, `feat_heading_diff`, `feat_speed`, `feat_time_gap`) plus 8 context features (`f2_proj_frac`, `f2_end_dist`, `f2_cos_heading`, `f2_ctx_dist`, `f2_dist_minus_min`, `f2_ctx_minus_min`, `f2_dist_rank`, `f2_n_cand`), computed by `person2/experiments/context_features.py` from the raw `.track` and `.nodes` files and the candidate list only (no labels, no reference route), so the API computes them live with the same function. The change from the 5 frozen features was agreed by the team and every model was re-run on the new table (see 3.1.1).
 
-**Metric definitions.** *Macro F1* averages the F1 of class 0 and class 1 at threshold 0.5. *Top-1 accuracy*: for each GPS point take the candidate with the highest probability; it is correct if that candidate carries label 1 (ties go to the smaller arc id). *Candidate miss rate*: share of GPS points whose reference arc is not among the candidates, which caps Top-1. *Log loss* penalises confident wrong probabilities. *ECE* is the average gap between predicted probability and observed frequency over 10 bins. *Route continuity (classifier-only)*: share of consecutive top picks that are connected in the road network, from `evaluation/route_metrics.py` (Person 3), before any HMM decoding.
+**Metric definitions.** *Macro F1* averages the F1 of class 0 and class 1 at threshold 0.5; *macro precision* and *macro recall* average precision and recall over the two classes in the same way. *Top-1 accuracy*: for each GPS point take the candidate with the highest probability; it is correct if that candidate carries label 1 (ties go to the smaller arc id). *Candidate miss rate*: share of GPS points whose reference arc is not among the candidates, which caps Top-1. *Log loss* penalises confident wrong probabilities. *ECE* is the average gap between predicted probability and observed frequency over 10 bins. *Route continuity (classifier-only)*: share of consecutive top picks that are connected in the road network, from `evaluation/route_metrics.py` (Person 3), before any HMM decoding.
 
-| Model | Algorithm family | Key configuration | CV macro F1 (mean ± std) | CV Top-1 | Test Top-1 | Route continuity (classifier-only, test) | Test log loss | Test macro F1 | Inference time |
-|---|---|---|---|---|---|---|---|---|---|
-| xgboost | Boosting (gradient-boosted decision trees) | colsample_bytree=0.8, gamma=0, learning_rate=0.1, max_depth=6, min_child_weight=1, n_estimators=300, reg_lambda=1, subsample=0.8 | 0.9071 ± 0.0334 | 0.7640 | 0.8466 | 0.9340 | 0.0571 | 0.9227 | 16.6 ms per trip |
-| gaussian_nb | Probabilistic (generative, Naive Bayes) | var_smoothing=1e-09 | 0.6989 ± 0.0205 | 0.6882 | 0.7443 | 0.8949 | 0.7344 | 0.6923 | 5.0 ms per trip |
-| logistic_regression | Linear (logistic regression) | class_weight=balanced, max_iter=1000 | 0.7225 ± 0.0421 | 0.7256 | 0.8093 | 0.9151 | 0.2311 | 0.7452 | 2.6 ms per trip |
-| random_forest | Tree ensemble (bagging) | class_weight=balanced_subsample, max_depth=12, n_estimators=100 | 0.8678 ± 0.0379 | 0.7647 | 0.8444 | 0.9326 | 0.1020 | 0.8844 | 22.3 ms per trip |
-| hist_gradient_boosting | Boosting (histogram gradient boosting) | class_weight=balanced, learning_rate=0.05, max_iter=150 | 0.8513 ± 0.0616 | 0.7641 | 0.8449 | 0.9287 | 0.1079 | 0.8797 | 36.3 ms per trip |
-| linear_svm | Kernel-based (linear SVM) | C=1, class_weight=balanced, max_iter=5000 | 0.6965 ± 0.0503 | 0.7309 | 0.8176 | 0.9132 | 0.3586 | 0.7202 | 2.3 ms per trip |
+| Model | Algorithm family | Key configuration | CV macro F1 (mean ± std) | CV Top-1 | Test Top-1 | Route continuity (classifier-only, test) | Test log loss | Test macro F1 | Test macro precision | Test macro recall | Inference time |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| xgboost | Boosting (gradient-boosted decision trees) | colsample_bytree=0.8, gamma=0, learning_rate=0.1, max_depth=6, min_child_weight=1, n_estimators=300, reg_lambda=1, subsample=0.8 | 0.9071 ± 0.0334 | 0.7640 | 0.8466 | 0.9340 | 0.0571 | 0.9227 | 0.9229 | 0.9226 | 16.6 ms per trip |
+| gaussian_nb | Probabilistic (generative, Naive Bayes) | var_smoothing=1e-09 | 0.6989 ± 0.0205 | 0.6882 | 0.7443 | 0.8949 | 0.7344 | 0.6923 | 0.6529 | 0.8895 | 5.0 ms per trip |
+| logistic_regression | Linear (logistic regression) | class_weight=balanced, max_iter=1000 | 0.7225 ± 0.0421 | 0.7256 | 0.8093 | 0.9151 | 0.2311 | 0.7452 | 0.6917 | 0.9149 | 2.6 ms per trip |
+| random_forest | Tree ensemble (bagging) | class_weight=balanced_subsample, max_depth=12, n_estimators=100 | 0.8678 ± 0.0379 | 0.7647 | 0.8444 | 0.9326 | 0.1020 | 0.8844 | 0.8342 | 0.9586 | 22.3 ms per trip |
+| hist_gradient_boosting | Boosting (histogram gradient boosting) | class_weight=balanced, learning_rate=0.05, max_iter=150 | 0.8513 ± 0.0616 | 0.7641 | 0.8449 | 0.9287 | 0.1079 | 0.8797 | 0.8280 | 0.9582 | 36.3 ms per trip |
+| linear_svm | Kernel-based (linear SVM) | C=1, class_weight=balanced, max_iter=5000 | 0.6965 ± 0.0503 | 0.7309 | 0.8176 | 0.9132 | 0.3586 | 0.7202 | 0.6725 | 0.9044 | 2.2 ms per trip |
 
 Reference point: predicting the base rate for every candidate gives a student-test log loss of 0.2469. Inference time is the median of 5 repeated `predict_proba` calls on the complete student-test candidate set after a warm-up, all models timed one after another on an otherwise idle machine (`person2/experiments/time_models.py`).
 
@@ -180,7 +197,7 @@ Isotonic calibration (fitted on out-of-fold scores, trip-grouped) changes XGBoos
 **A1. Why suitable.** It is a fast, maximum-margin linear baseline from a different family (kernel-based). It tests how much of the problem a single weighted combination of the features can solve.
 
 **A2. Strengths and limitations.**
-- **Strengths:** among the fastest models (2.3 ms per trip) and it does not overfit.
+- **Strengths:** among the fastest models (7.0 s to train on all 80 training trips, 2.2 ms per trip to score; `person2/experiments/results/timing.csv`) and it does not overfit.
 - **Limitations:**
   - It cannot represent interactions between features, so it underfits: student-test Top-1 0.8176 against 0.8466 for XGBoost.
   - Its output is a margin, not a probability. Raw scores give log loss 0.3586 and ECE 0.239. Trip-grouped Platt calibration (`--calibrate sigmoid`) brings these to 0.1018 and 0.024 without changing the ranking (Top-1 is unchanged).
@@ -215,9 +232,25 @@ Isotonic calibration (fitted on out-of-fold scores, trip-grouped) changes XGBoos
 
 **C. Experimental results.** 7–8. *Student-test:* Top-1 0.8449, macro F1 0.8797, log loss 0.1079. CV macro F1 0.8513 ± 0.0616. 9. *Over- or underfitting:* no sign of overfitting; CV and student-test macro F1 agree (0.8513 and 0.8797).
 
-### Other models tried
+### KNN and MLP (Person 1; different protocol)
 
-Distance-weighted KNN (k = 15) and a shallow MLP (64-32, ReLU, early stopping) were trained by Person 1 on the 5 frozen features with a different protocol (training on a stratified 100,000-150,000-row sample). Their results are in `docs/report/SECTION_2_EDA.md` and `experiments/results/model2_knn_results.json` / `model5_mlp_results.json`. They were not re-run on the final 13-feature table, so they are not part of the comparison above.
+These two models were trained by Person 1 with a different protocol from the table in 3.1: the 5 frozen features only, and training on a stratified sample of 100,000 to 150,000 candidate rows instead of the full training table. Their numbers are therefore not directly comparable with section 3.1, and they were not candidates for the final model. Source: `experiments/results/model2_knn_results.json`, `model5_mlp_results.json` and `docs/report/SECTION_2_EDA.md`.
+
+#### Distance-weighted KNN
+
+**A. Model understanding.** 1. *Why suitable:* an instance-based model that labels a candidate by the most similar training candidates, with no assumption about the shape of the decision boundary. 2. *Strengths and limitations:* simple and assumption-free, but every prediction searches the stored training rows, so it has to be trained on a sample to stay fast, and it is sensitive to feature scaling.
+
+**B. Training and configuration.** 5. *Hyperparameters:* k = 15, weights = distance (closer neighbours count more), standard scaling. 6. *Objective:* none; KNN stores the training rows and votes at prediction time.
+
+**C. Experimental results.** 7-8. CV macro F1 0.8450, student-test macro F1 0.8018, student-test log loss 0.2791. 9. *Over- or underfitting:* the drop from CV to student-test macro F1 (0.8450 to 0.8018) suggests mild overfitting to the sampled training rows.
+
+#### Multi-layer perceptron
+
+**A. Model understanding.** 1. *Why suitable:* a small neural network learns non-linear combinations of the features, like the tree models, and outputs probabilities. 2. *Strengths and limitations:* flexible and fast to score, but it needs scaled inputs, is sensitive to its settings, and was trained on a sample here.
+
+**B. Training and configuration.** 5. *Hyperparameters:* hidden layers (64, 32), activation relu, early stopping on a 10% validation split, at most 100 epochs, Adam optimiser. 6. *Objective:* binary cross-entropy (log loss) with an L2 penalty.
+
+**C. Experimental results.** 7-8. CV macro F1 0.8545, student-test macro F1 0.8175, student-test Top-1 0.7284, student-test log loss 0.1324. 9. *Over- or underfitting:* early stopping ends training when the validation loss stops improving; the gap from CV to student-test macro F1 (0.8545 to 0.8175) is small.
 
 ## 3.3 Visualisations
 
@@ -250,8 +283,9 @@ All figures are in `person2/experiments/results/`, drawn from the logged runs on
 
 Model: XGBoost.
 
-1. *Hyperparameters searched:* n_estimators, max_depth, learning_rate, subsample, colsample_bytree, min_child_weight, reg_lambda, gamma.
-2. *Ranges and distributions* (fixed before tuning; reasons in `person2/tuning/search_space.json`):
+**Q1.** *Hyperparameters searched:* n_estimators, max_depth, learning_rate, subsample, colsample_bytree, min_child_weight, reg_lambda, gamma.
+
+**Q2.** *Ranges and distributions* (fixed before tuning; reasons in `person2/tuning/search_space.json`):
 
 | Hyperparameter | Type | Range | Scale |
 |---|---|---|---|
@@ -264,10 +298,13 @@ Model: XGBoost.
 | reg_lambda | float | 0.01 to 50.0 | log |
 | gamma | float | 0.0 to 5.0 | linear |
 
-3. *Objective:* mean over the 5 trip-grouped folds of the validation log loss (minimised), on the 80 training trips only. Why: Probability quality, which is what the HMM emission model uses. Chosen as the default objective after the baseline runs showed that macro F1 at a fixed 0.5 threshold is misleading here: each GPS point has ~12 candidates and exactly one positive (candidate positive rate ~7%), and a calibrated Gaussian NB predicted no positives at all (macro F1 0.48) although its log loss improved and its ranking (AUC) was unchanged. Decided before any tuning run, using training-partition CV and student-test baselines only.
-4. *Trials:* 15 requested, 12 completed and 3 stopped early by the median pruner; Bayesian optimisation: Tree-structured Parzen Estimator (optuna.samplers.TPESampler), first 5 trials random; 25 minutes in total.
-5. *Best values* (trial 6, CV log loss 0.0740): n_estimators = 300, max_depth = 9, learning_rate = 0.01118, subsample = 0.6628, colsample_bytree = 0.9547, min_child_weight = 4.152, reg_lambda = 0.1175, gamma = 3.451.
-6. *Tuned vs untuned* (same table, folds, seed and metrics):
+**Q3.** *Objective:* mean over the 5 trip-grouped folds of the validation log loss (minimised), on the 80 training trips only. Why: Probability quality, which is what the HMM emission model uses. Chosen as the default objective after the baseline runs showed that macro F1 at a fixed 0.5 threshold is misleading here: each GPS point has ~12 candidates and exactly one positive (candidate positive rate ~7%), and a calibrated Gaussian NB predicted no positives at all (macro F1 0.48) although its log loss improved and its ranking (AUC) was unchanged. Decided before any tuning run, using training-partition CV and student-test baselines only.
+
+**Q4.** *Trials:* 15 requested, 12 completed and 3 stopped early by the median pruner; Bayesian optimisation: Tree-structured Parzen Estimator (optuna.samplers.TPESampler), first 5 trials random; 25 minutes in total.
+
+**Q5.** *Best values* (trial 6, CV log loss 0.0740): n_estimators = 300, max_depth = 9, learning_rate = 0.01118, subsample = 0.6628, colsample_bytree = 0.9547, min_child_weight = 4.152, reg_lambda = 0.1175, gamma = 3.451.
+
+**Q6.** *Tuned vs untuned* (same table, folds, seed and metrics):
 
 | Metric | Untuned (defaults) | Tuned | Difference |
 |---|---|---|---|
@@ -299,7 +336,7 @@ For candidate arc *a* at observation *t*:
 
 - *p_t(a)* is the probability from the selected classifier (tuned XGBoost on the 13 features of Section 3.1, student-test ECE 0.005). For the training trips it is the out-of-fold probability, so no trip is scored by a model that saw it.
 - *d_t(a)* is the perpendicular distance in metres from the GPS point to the arc.
-- σ = 5.5 m is the GPS-noise scale (tuned). Person 1 measured a median GPS-to-road error of 4.7 m.
+- σ = 5.5 m is the GPS-noise scale (tuned). The median distance from a GPS point to its reference route is 5.6 m on the training trips and 5.2 m on the student-test trips (section 2.2).
 - w = 0.35 is the classifier weight (tuned).
 
 ## 5.3 Transition probabilities (Newson & Krumm formulation)
@@ -404,6 +441,16 @@ Reference routes stay on Laptop 1. The response contains the predicted arcs, the
 
 All 20 trips ran in `model_plus_viterbi` mode (the trained model and the decoder). Source: `person2/experiments/evaluate_pipeline.py`, which calls the same `api/pipeline.py` as the server.
 
+**Why latencies differ.** The table above measures the server after the model is loaded and without building the Folium map. A request from the UI also builds the map, and the first request after start-up is slower. Measured on evaluator trip 00000015 (6,854 GPS points) by `person2/experiments/measure_api_latency.py` (`person2/experiments/results/api_latency.json`):
+
+| Request | Total server latency | Data load | Features | Model inference | Viterbi | Not in the breakdown (map and scoring) |
+|---|---|---|---|---|---|---|
+| First request, with map | 3939 ms | 20 ms | 504 ms | 42 ms | 359 ms | 3013 ms |
+| Later request, with map | 3822 ms | 9 ms | 365 ms | 41 ms | 281 ms | 3126 ms |
+| Later request, without map | 801 ms | 10 ms | 380 ms | 54 ms | 289 ms | 67 ms |
+
+Loading the model and decoder when the server starts takes 3.7 s. Building the map accounts for about 3021 ms of a UI request; the latency shown in the UI and in `api/logs/requests.log` includes it, while the breakdown fields cover only the four pipeline stages.
+
 ## 7.4 UI screenshots
 
 ![UI: trip list](../figures/ui_trip_list.png)
@@ -412,21 +459,21 @@ All 20 trips ran in `model_plus_viterbi` mode (the trained model and the decoder
 
 ## 7.5 API request log (Laptop 1)
 
-Command window of the API server while it receives prediction requests for evaluator trips 00000015 and 00000049 (each request is logged with trip ID, client, latency, accuracy and continuity):
+Command window of the API server while it receives prediction requests for evaluator trips 00000015 and 00000049 (each request is logged with trip ID, client, latency, accuracy and continuity). This capture is a rehearsal with the API and the UI on one laptop, so the client address is 127.0.0.1; in the two-laptop demo the same log shows the network address of Laptop 2.
 
 ![API server command window](../figures/api_cmd_log.png)
 
 Last entries of `api/logs/requests.log` from the run shown above:
 
 ```
-[2026-11-18 19:48:10] [INFO] [PathSnap] PathSnap FastAPI Service started successfully on Laptop 1.
 [2026-11-18 19:48:10] [INFO] [PathSnap] Loaded configuration: Host=0.0.0.0, Port=8000
 [2026-11-18 19:48:14] [INFO] [PathSnap] EVALUATOR_REQ | Trip: 00000015 | Client: 127.0.0.1 | Mode: model_plus_viterbi | Latency: 3948.42ms | Top-1 Acc: 78.68% | Continuity: 99.45%
 [2026-11-18 19:48:17] [INFO] [PathSnap] EVALUATOR_REQ | Trip: 00000049 | Client: 127.0.0.1 | Mode: model_plus_viterbi | Latency: 2283.13ms | Top-1 Acc: 93.75% | Continuity: 97.24%
+[2026-11-18 21:52:04] [INFO] [PathSnap] Loaded classifier model artifact from <repo>\person2\models\final\model.joblib
 ```
 
 # 8. Academic integrity and AI assistance
 
-- The evaluator trips were not used for training, feature design, tuning, thresholds or model choice; they were scored once with the final pipeline. Reference labels never reach the model inputs or the UI.
+- The evaluator trips were not used for training, feature design, tuning, thresholds or model choice; no choice used them, and they were run through the finished pipeline. Reference labels never reach the model inputs or the UI.
 - Every reported number is produced by a script in the repository from a logged run (seeds, parameters, library versions and the feature-table hash are recorded per run).
 - AI coding assistants were used during development, mainly to help write and debug code and to structure the documentation. All experiments and results come from logged runs in this repository, and the team reviewed them.

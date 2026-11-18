@@ -8,16 +8,16 @@
 
 **Features.** 13 per candidate: the 5 frozen features (`feat_dist_to_arc`, `feat_arc_length`, `feat_heading_diff`, `feat_speed`, `feat_time_gap`) plus 8 context features (`f2_proj_frac`, `f2_end_dist`, `f2_cos_heading`, `f2_ctx_dist`, `f2_dist_minus_min`, `f2_ctx_minus_min`, `f2_dist_rank`, `f2_n_cand`), computed by `person2/experiments/context_features.py` from the raw `.track` and `.nodes` files and the candidate list only (no labels, no reference route), so the API computes them live with the same function. The change from the 5 frozen features was agreed by the team and every model was re-run on the new table (see 3.1.1).
 
-**Metric definitions.** *Macro F1* averages the F1 of class 0 and class 1 at threshold 0.5. *Top-1 accuracy*: for each GPS point take the candidate with the highest probability; it is correct if that candidate carries label 1 (ties go to the smaller arc id). *Candidate miss rate*: share of GPS points whose reference arc is not among the candidates, which caps Top-1. *Log loss* penalises confident wrong probabilities. *ECE* is the average gap between predicted probability and observed frequency over 10 bins. *Route continuity (classifier-only)*: share of consecutive top picks that are connected in the road network, from `evaluation/route_metrics.py` (Person 3), before any HMM decoding.
+**Metric definitions.** *Macro F1* averages the F1 of class 0 and class 1 at threshold 0.5; *macro precision* and *macro recall* average precision and recall over the two classes in the same way. *Top-1 accuracy*: for each GPS point take the candidate with the highest probability; it is correct if that candidate carries label 1 (ties go to the smaller arc id). *Candidate miss rate*: share of GPS points whose reference arc is not among the candidates, which caps Top-1. *Log loss* penalises confident wrong probabilities. *ECE* is the average gap between predicted probability and observed frequency over 10 bins. *Route continuity (classifier-only)*: share of consecutive top picks that are connected in the road network, from `evaluation/route_metrics.py` (Person 3), before any HMM decoding.
 
-| Model | Algorithm family | Key configuration | CV macro F1 (mean ± std) | CV Top-1 | Test Top-1 | Route continuity (classifier-only, test) | Test log loss | Test macro F1 | Inference time |
-|---|---|---|---|---|---|---|---|---|---|
-| xgboost | Boosting (gradient-boosted decision trees) | colsample_bytree=0.8, gamma=0, learning_rate=0.1, max_depth=6, min_child_weight=1, n_estimators=300, reg_lambda=1, subsample=0.8 | 0.9071 ± 0.0334 | 0.7640 | 0.8466 | 0.9340 | 0.0571 | 0.9227 | 16.6 ms per trip |
-| gaussian_nb | Probabilistic (generative, Naive Bayes) | var_smoothing=1e-09 | 0.6989 ± 0.0205 | 0.6882 | 0.7443 | 0.8949 | 0.7344 | 0.6923 | 5.0 ms per trip |
-| logistic_regression | Linear (logistic regression) | class_weight=balanced, max_iter=1000 | 0.7225 ± 0.0421 | 0.7256 | 0.8093 | 0.9151 | 0.2311 | 0.7452 | 2.6 ms per trip |
-| random_forest | Tree ensemble (bagging) | class_weight=balanced_subsample, max_depth=12, n_estimators=100 | 0.8678 ± 0.0379 | 0.7647 | 0.8444 | 0.9326 | 0.1020 | 0.8844 | 22.3 ms per trip |
-| hist_gradient_boosting | Boosting (histogram gradient boosting) | class_weight=balanced, learning_rate=0.05, max_iter=150 | 0.8513 ± 0.0616 | 0.7641 | 0.8449 | 0.9287 | 0.1079 | 0.8797 | 36.3 ms per trip |
-| linear_svm | Kernel-based (linear SVM) | C=1, class_weight=balanced, max_iter=5000 | 0.6965 ± 0.0503 | 0.7309 | 0.8176 | 0.9132 | 0.3586 | 0.7202 | 2.3 ms per trip |
+| Model | Algorithm family | Key configuration | CV macro F1 (mean ± std) | CV Top-1 | Test Top-1 | Route continuity (classifier-only, test) | Test log loss | Test macro F1 | Test macro precision | Test macro recall | Inference time |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| xgboost | Boosting (gradient-boosted decision trees) | colsample_bytree=0.8, gamma=0, learning_rate=0.1, max_depth=6, min_child_weight=1, n_estimators=300, reg_lambda=1, subsample=0.8 | 0.9071 ± 0.0334 | 0.7640 | 0.8466 | 0.9340 | 0.0571 | 0.9227 | 0.9229 | 0.9226 | 16.6 ms per trip |
+| gaussian_nb | Probabilistic (generative, Naive Bayes) | var_smoothing=1e-09 | 0.6989 ± 0.0205 | 0.6882 | 0.7443 | 0.8949 | 0.7344 | 0.6923 | 0.6529 | 0.8895 | 5.0 ms per trip |
+| logistic_regression | Linear (logistic regression) | class_weight=balanced, max_iter=1000 | 0.7225 ± 0.0421 | 0.7256 | 0.8093 | 0.9151 | 0.2311 | 0.7452 | 0.6917 | 0.9149 | 2.6 ms per trip |
+| random_forest | Tree ensemble (bagging) | class_weight=balanced_subsample, max_depth=12, n_estimators=100 | 0.8678 ± 0.0379 | 0.7647 | 0.8444 | 0.9326 | 0.1020 | 0.8844 | 0.8342 | 0.9586 | 22.3 ms per trip |
+| hist_gradient_boosting | Boosting (histogram gradient boosting) | class_weight=balanced, learning_rate=0.05, max_iter=150 | 0.8513 ± 0.0616 | 0.7641 | 0.8449 | 0.9287 | 0.1079 | 0.8797 | 0.8280 | 0.9582 | 36.3 ms per trip |
+| linear_svm | Kernel-based (linear SVM) | C=1, class_weight=balanced, max_iter=5000 | 0.6965 ± 0.0503 | 0.7309 | 0.8176 | 0.9132 | 0.3586 | 0.7202 | 0.6725 | 0.9044 | 2.2 ms per trip |
 
 Reference point: predicting the base rate for every candidate gives a student-test log loss of 0.2469. Inference time is the median of 5 repeated `predict_proba` calls on the complete student-test candidate set after a warm-up, all models timed one after another on an otherwise idle machine (`person2/experiments/time_models.py`).
 
@@ -109,8 +109,10 @@ All figures are in `person2/experiments/results/`, drawn from the logged runs on
 
 ## 4. Bayesian hyperparameter optimisation (XGBoost)
 
-1. *Hyperparameters searched:* n_estimators, max_depth, learning_rate, subsample, colsample_bytree, min_child_weight, reg_lambda, gamma.
-2. *Ranges and distributions* (fixed before tuning; reasons in `person2/tuning/search_space.json`):
+
+**Q1.** *Hyperparameters searched:* n_estimators, max_depth, learning_rate, subsample, colsample_bytree, min_child_weight, reg_lambda, gamma.
+
+**Q2.** *Ranges and distributions* (fixed before tuning; reasons in `person2/tuning/search_space.json`):
 
 | Hyperparameter | Type | Range | Scale |
 |---|---|---|---|
@@ -123,10 +125,14 @@ All figures are in `person2/experiments/results/`, drawn from the logged runs on
 | reg_lambda | float | 0.01 to 50.0 | log |
 | gamma | float | 0.0 to 5.0 | linear |
 
-3. *Objective:* mean over the 5 trip-grouped folds of the validation log loss (minimised), on the 80 training trips only. Why: Probability quality, which is what the HMM emission model uses. Chosen as the default objective after the baseline runs showed that macro F1 at a fixed 0.5 threshold is misleading here: each GPS point has ~12 candidates and exactly one positive (candidate positive rate ~7%), and a calibrated Gaussian NB predicted no positives at all (macro F1 0.48) although its log loss improved and its ranking (AUC) was unchanged. Decided before any tuning run, using training-partition CV and student-test baselines only.
-4. *Trials:* 15 requested, 12 completed and 3 stopped early by the median pruner; Bayesian optimisation: Tree-structured Parzen Estimator (optuna.samplers.TPESampler), first 5 trials random; 25 minutes in total.
-5. *Best values* (trial 6, CV log loss 0.0740): n_estimators = 300, max_depth = 9, learning_rate = 0.01118, subsample = 0.6628, colsample_bytree = 0.9547, min_child_weight = 4.152, reg_lambda = 0.1175, gamma = 3.451.
-6. *Tuned vs untuned* (same table, folds, seed and metrics):
+
+**Q3.** *Objective:* mean over the 5 trip-grouped folds of the validation log loss (minimised), on the 80 training trips only. Why: Probability quality, which is what the HMM emission model uses. Chosen as the default objective after the baseline runs showed that macro F1 at a fixed 0.5 threshold is misleading here: each GPS point has ~12 candidates and exactly one positive (candidate positive rate ~7%), and a calibrated Gaussian NB predicted no positives at all (macro F1 0.48) although its log loss improved and its ranking (AUC) was unchanged. Decided before any tuning run, using training-partition CV and student-test baselines only.
+
+**Q4.** *Trials:* 15 requested, 12 completed and 3 stopped early by the median pruner; Bayesian optimisation: Tree-structured Parzen Estimator (optuna.samplers.TPESampler), first 5 trials random; 25 minutes in total.
+
+**Q5.** *Best values* (trial 6, CV log loss 0.0740): n_estimators = 300, max_depth = 9, learning_rate = 0.01118, subsample = 0.6628, colsample_bytree = 0.9547, min_child_weight = 4.152, reg_lambda = 0.1175, gamma = 3.451.
+
+**Q6.** *Tuned vs untuned* (same table, folds, seed and metrics):
 
 | Metric | Untuned (defaults) | Tuned | Difference |
 |---|---|---|---|
@@ -151,4 +157,4 @@ The complete pipeline (`api/pipeline.py`: candidates, frozen and context feature
 | student_test | 10 | 0.8728 | 0.8914 | 0.9706 | model_plus_viterbi (10) |
 | evaluator_test | 10 | 0.8716 | 0.8923 | 0.9448 | model_plus_viterbi (10) |
 
-The evaluator partition was scored once, after every model, feature and decoder choice had been fixed on the training and student-test trips; nothing was tuned on it.
+No model, feature or decoder choice used the evaluator trips: every choice was made on the training trips (cross-validation) and the student-test trips, and the evaluator partition was then run through the finished pipeline.

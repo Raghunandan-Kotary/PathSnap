@@ -1,0 +1,42 @@
+{
+  "trip": "00000015",
+  "server_start_load_s": 3.7163286000140943,
+  "requests": [
+    {
+      "request": "cold_with_map",
+      "wall_ms": 3939.3712999881245,
+      "reported_total_ms": 3938.86,
+      "data_load_ms": 20.44,
+      "feature_extraction_ms": 504.03,
+      "model_inference_ms": 42.19,
+      "viterbi_decode_ms": 359.04,
+      "sum_of_breakdown_ms": 925.7,
+      "not_in_breakdown_ms": 3013.16,
+      "observations": 6854
+    },
+    {
+      "request": "warm_with_map",
+      "wall_ms": 3822.7964999969117,
+      "reported_total_ms": 3822.1,
+      "data_load_ms": 9.06,
+      "feature_extraction_ms": 364.77,
+      "model_inference_ms": 41.09,
+      "viterbi_decode_ms": 281.13,
+      "sum_of_breakdown_ms": 696.05,
+      "not_in_breakdown_ms": 3126.05,
+      "observations": 6854
+    },
+    {
+      "request": "warm_without_map",
+      "wall_ms": 801.3394000008702,
+      "reported_total_ms": 800.64,
+      "data_load_ms": 9.97,
+      "feature_extraction_ms": 379.87,
+      "model_inference_ms": 54.29,
+      "viterbi_decode_ms": 289.41,
+      "sum_of_breakdown_ms": 733.5400000000001,
+      "not_in_breakdown_ms": 67.09999999999991,
+      "observations": 6854
+    }
+  ]
+}

@@ -147,16 +147,21 @@ def plots(sel: pd.DataFrame, out: Path, table: Path | None) -> None:
     plt.close(fig)
 
     n = len(labels)
-    fig, axes = plt.subplots(1, n, figsize=(3.4 * n, 3.6), squeeze=False)
-    for ax, (_, r) in zip(axes[0], sel.iterrows()):
+    ncol = min(n, 3)
+    nrow = -(-n // ncol)
+    fig, axes = plt.subplots(nrow, ncol, figsize=(5.2 * ncol, 4.6 * nrow), squeeze=False)
+    for ax in axes.flat[n:]:
+        ax.axis("off")
+    for ax, (_, r) in zip(axes.flat, sel.iterrows()):
         cm = np.array([[r.tn, r.fp], [r.fn, r.tp]])
         ax.imshow(cm / cm.sum(axis=1, keepdims=True), cmap="Blues", vmin=0, vmax=1)
         for i in range(2):
             for j in range(2):
-                ax.text(j, i, f"{cm[i, j]:,}", ha="center", va="center", color="black", fontsize=9)
+                share = cm[i, j] / cm[i].sum()
+                ax.text(j, i, f"{cm[i, j]:,}", ha="center", va="center", color="white" if share > 0.5 else "black", fontsize=13)
         ax.set_xticks([0, 1], ["pred 0", "pred 1"])
         ax.set_yticks([0, 1], ["true 0", "true 1"])
-        ax.set_title(r.label, fontsize=10)
+        ax.set_title(r.label, fontsize=13)
     fig.suptitle("Student-test confusion matrices (colour = row-normalised, text = counts, threshold 0.5)")
     fig.tight_layout()
     fig.savefig(out / "confusion_matrices.png", dpi=130)

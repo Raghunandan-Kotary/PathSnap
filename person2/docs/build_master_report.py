@@ -44,6 +44,12 @@ def main() -> None:
     _, lr = run_metrics("20261118-173204_logistic_regression")
     _, hg = run_metrics("20261118-174235_hist_gradient_boosting")
     st, ev = fin["student_test"], fin["evaluator_test"]
+    eda = json.loads((ROOT / "person2" / "eda" / "outputs" / "report_eda_numbers.json").read_text())
+    lat = json.loads((P2R / "api_latency.json").read_text())
+    lreq = {r["request"]: r for r in lat["requests"]}
+    knn = json.loads((ROOT / "experiments" / "results" / "model2_knn_results.json").read_text())
+    mlp = json.loads((ROOT / "experiments" / "results" / "model5_mlp_results.json").read_text())
+    NOEVAL = "No model, feature or decoder choice used the evaluator trips; they were run through the finished pipeline."
 
     out = []
     w = out.append
@@ -61,7 +67,7 @@ def main() -> None:
     for name, s in (("Student-test trips", st), ("Evaluator trips", ev)):
         w(f"| {name} | {s['n_trips']} | {s['pooled_pointwise_accuracy']:.4f} | {s['mean_trip_accuracy']:.4f} | {s['mean_route_continuity']:.4f} |")
     w("\nThe selected classifier is a tuned XGBoost on 13 features (student-test log loss 0.0549, Top-1 0.8472 before decoding). "
-      "The evaluator trips were scored once, after every choice had been fixed on the training and student-test trips.\n")
+      + NOEVAL + "\n")
 
     # ------------------------------------------------------------------ 2
     w("# 2. Dataset understanding and exploratory data analysis\n")
@@ -76,7 +82,10 @@ def main() -> None:
     w("## 2.2 Preprocessing and data quality\n")
     w("- **Missing and invalid values.** No GPS, node or arc file has missing or out-of-range values; timestamps never decrease; every GPS point lies inside its trip's road network. No rows were removed.\n"
       "- **Coordinates.** Trips lie on several continents (longitude −100.43° to 137.25°, latitude −34.65° to 61.71°), so no single projection fits. Each trip is projected to a local metric plane centred on its own road network; distances in degrees are never used (one degree of longitude is about 111 km at the equator but about 54 km at 61° N).\n"
-      "- **Sampling.** 96.7% of consecutive GPS steps are exactly 1 s apart; 47 of 90 trips contain gaps above 5 s, the largest 153,064 s. Gaps are kept and handled by the decoder (sequences split at gaps above 30 s).\n"
+      f"- **Sampling.** {100 * eda['all_known']['share_1s']:.1f}% of consecutive GPS steps in the 90 known trips are exactly 1 s apart ({100 * eda['train']['share_1s']:.1f}% in train, {100 * eda['student_test']['share_1s']:.1f}% in student-test); 47 of 90 trips contain gaps above 5 s, the largest 153,064 s. Gaps are kept and handled by the decoder (sequences split at gaps above 30 s).\n"
+      f"- **GPS noise.** Measured over every GPS point, the median distance to the trip's reference route is {eda['train']['median_gps_to_route_m']:.1f} m on the training trips and {eda['student_test']['median_gps_to_route_m']:.1f} m on the student-test trips; "
+      f"{100 * eda['train']['share_within_30m']:.1f}% and {100 * eda['student_test']['share_within_30m']:.1f}% of points lie within 30 m (95th percentile {eda['train']['p95_gps_to_route_m']:.0f} m and {eda['student_test']['p95_gps_to_route_m']:.0f} m; the long training tail comes from the two trips described below). "
+      "These numbers come from `person2/eda/make_report_eda_figures.py` (`person2/eda/outputs/report_eda_numbers.json`).\n"
       "- **Road networks.** No isolated nodes; 89 of 90 networks have more than one weakly connected component, but every reference route lies inside one component. 9 trips contain 24 self-loop arcs.\n"
       "- **Reference routes.** `.route` lists each traversed arc once, so it is not aligned row by row with the GPS file. Each GPS point is assigned its reference arc by a windowed sequential projection onto the route (`features/candidate_generator.py`). In trips 00000054 and 00000033 the GPS points lie a median 139 m and 122 m from the reference route, so about half of their points have no reference arc nearby; the cause was not determined, and those points act as all-negative examples (a label limitation).\n")
     w("## 2.3 Candidates and features\n")
@@ -85,11 +94,20 @@ def main() -> None:
       "Each candidate gets 13 features, all computed from the raw files without labels:\n")
     w("- *Frozen features (Person 1):* distance to the arc, arc length, heading difference, speed, time gap.\n"
       "- *Context features (`person2/experiments/context_features.py`):* where along the arc the point projects and the distance to the arc's nearer end (separates adjacent arcs at junctions), a direction-aware heading smoothed over five GPS points (separates the two directions of a street), the mean distance of the neighbouring GPS points to the arc, and the candidate's distance relative to the other candidates of the same point (difference to the nearest, rank, number of candidates). Section 3.1.1 shows the evidence for adding them.\n")
-    for fig, cap in (("eda_trajectory_sizes.png", "GPS points per trip"), ("eda_sampling_intervals.png", "Sampling intervals"),
-                     ("eda_geographic_spread.png", "Geographic spread of the trips"), ("eda_road_network_properties.png", "Road network properties"),
-                     ("eda_gps_to_route_error.png", "Distance from GPS points to the reference route")):
-        w(f"![{cap}](../figures/{fig})\n")
-    w("An interactive Folium map of a training trip (GPS points, road network, reference route) is in `person2/eda/outputs/folium_train_00000003.html`.\n")
+    w("## 2.4 Visualisations\n")
+    w("Each caption states the trips the figure uses.\n")
+    w("![Sampling intervals and GPS noise](../figures/report_eda_sampling_and_noise.png)\n")
+    w("*Figure 2.1. Sampling intervals and GPS-to-route distance per partition (train: 80 trips, student-test: 10 trips; every GPS point).*\n")
+    w("![Training trip 00000003](../figures/report_eda_trajectory_train_00000003.png)\n")
+    w("*Figure 2.2. One training trip (00000003, train partition): GPS points, nearby road network and reference route.*\n")
+    w("![Folium map of training trip 00000003](../figures/report_eda_folium_train_00000003.png)\n")
+    w("*Figure 2.3. Screenshot of the interactive Folium map of the same training trip (`person2/eda/outputs/folium_train_00000003.html`).*\n")
+    w("![GPS points per trip](../figures/eda_trajectory_sizes.png)\n")
+    w("*Figure 2.4. GPS points per trip, all 90 known trips (train and student-test).*\n")
+    w("![Geographic spread](../figures/eda_geographic_spread.png)\n")
+    w("*Figure 2.5. Geographic spread of all 90 known trips, coloured by partition.*\n")
+    w("![Road network properties](../figures/eda_road_network_properties.png)\n")
+    w("*Figure 2.6. Road network properties for four sample trips: 00000001 and 00000005 (train), 00000000 and 00000040 (student-test).*\n")
 
     # ------------------------------------------------------------------ 3, 4
     w("# 3. Model experimentation and comparison\n")
@@ -114,10 +132,24 @@ def main() -> None:
     w("**B. Training and configuration.** 5. *Hyperparameters:* learning_rate = 0.05, max_iter = 150, class_weight = balanced. 6. *Objective:* binary log loss, minimised by gradient boosting on histogram-binned features.\n")
     w(f"**C. Experimental results.** 7–8. *Student-test:* Top-1 {ht['top1_acc']:.4f}, macro F1 {ht['macro_f1']:.4f}, log loss {ht['log_loss']:.4f}. CV macro F1 {hg['cv_macro_f1_mean']:.4f} ± {hg['cv_macro_f1_std']:.4f}. "
       f"9. *Over- or underfitting:* no sign of overfitting; CV and student-test macro F1 agree ({hg['cv_macro_f1_mean']:.4f} and {ht['macro_f1']:.4f}).\n")
-    w("### Other models tried\n")
-    w("Distance-weighted KNN (k = 15) and a shallow MLP (64-32, ReLU, early stopping) were trained by Person 1 on the 5 frozen features with a different protocol "
-      "(training on a stratified 100,000-150,000-row sample). Their results are in `docs/report/SECTION_2_EDA.md` and `experiments/results/model2_knn_results.json` / `model5_mlp_results.json`. "
-      "They were not re-run on the final 13-feature table, so they are not part of the comparison above.\n")
+    w("### KNN and MLP (Person 1; different protocol)\n")
+    w("These two models were trained by Person 1 with a different protocol from the table in 3.1: the 5 frozen features only, and training on a stratified "
+      "sample of 100,000 to 150,000 candidate rows instead of the full training table. Their numbers are therefore not directly comparable with section 3.1, and they were "
+      "not candidates for the final model. Source: `experiments/results/model2_knn_results.json`, `model5_mlp_results.json` and `docs/report/SECTION_2_EDA.md`.\n")
+    w("#### Distance-weighted KNN\n")
+    w("**A. Model understanding.** 1. *Why suitable:* an instance-based model that labels a candidate by the most similar training candidates, with no assumption about the shape of the decision boundary. "
+      "2. *Strengths and limitations:* simple and assumption-free, but every prediction searches the stored training rows, so it has to be trained on a sample to stay fast, and it is sensitive to feature scaling.\n")
+    w(f"**B. Training and configuration.** 5. *Hyperparameters:* k = {knn['hyperparameters']['n_neighbors']}, weights = {knn['hyperparameters']['weights']} (closer neighbours count more), standard scaling. "
+      "6. *Objective:* none; KNN stores the training rows and votes at prediction time.\n")
+    w(f"**C. Experimental results.** 7-8. CV macro F1 {knn['cv_macro_f1']:.4f}, student-test macro F1 {knn['student_test_macro_f1']:.4f}, student-test log loss {knn['student_test_log_loss']:.4f}. "
+      f"9. *Over- or underfitting:* the drop from CV to student-test macro F1 ({knn['cv_macro_f1']:.4f} to {knn['student_test_macro_f1']:.4f}) suggests mild overfitting to the sampled training rows.\n")
+    w("#### Multi-layer perceptron\n")
+    w("**A. Model understanding.** 1. *Why suitable:* a small neural network learns non-linear combinations of the features, like the tree models, and outputs probabilities. "
+      "2. *Strengths and limitations:* flexible and fast to score, but it needs scaled inputs, is sensitive to its settings, and was trained on a sample here.\n")
+    w(f"**B. Training and configuration.** 5. *Hyperparameters:* hidden layers {tuple(mlp['hyperparameters']['hidden_layers'])}, activation {mlp['hyperparameters']['activation']}, early stopping on a 10% validation split, at most 100 epochs, Adam optimiser. "
+      "6. *Objective:* binary cross-entropy (log loss) with an L2 penalty.\n")
+    w(f"**C. Experimental results.** 7-8. CV macro F1 {mlp['cv_macro_f1']:.4f}, student-test macro F1 {mlp['student_test_macro_f1']:.4f}, student-test Top-1 {mlp['student_test_top1_accuracy']:.4f}, student-test log loss {mlp['student_test_log_loss']:.4f}. "
+      f"9. *Over- or underfitting:* early stopping ends training when the validation loss stops improving; the gap from CV to student-test macro F1 ({mlp['cv_macro_f1']:.4f} to {mlp['student_test_macro_f1']:.4f}) is small.\n")
     s33 = section(p2, "## 3.3 Visualisations", "## 4. Bayesian")
     w(s33)
     for fig, cap in (("cv_macro_f1.png", "CV macro F1 per model"), ("student_test_top1_macro_f1.png", "Student-test Top-1 and macro F1"),
@@ -155,6 +187,14 @@ def main() -> None:
         w(f"| {name} | {s['n_trips']} | {s['pooled_pointwise_accuracy']:.4f} | {s['mean_trip_accuracy']:.4f} | {d.pointwise_accuracy.min():.3f}–{d.pointwise_accuracy.max():.3f} | "
           f"{s['mean_route_continuity']:.4f} | {d.total_latency_ms.mean():.0f} ms |")
     w("\nAll 20 trips ran in `model_plus_viterbi` mode (the trained model and the decoder). Source: `person2/experiments/evaluate_pipeline.py`, which calls the same `api/pipeline.py` as the server.\n")
+    c, wm, wn = lreq["cold_with_map"], lreq["warm_with_map"], lreq["warm_without_map"]
+    w("**Why latencies differ.** The table above measures the server after the model is loaded and without building the Folium map. A request from the UI also builds the map, "
+      f"and the first request after start-up is slower. Measured on evaluator trip {lat['trip']} ({c['observations']:,} GPS points) by `person2/experiments/measure_api_latency.py` (`person2/experiments/results/api_latency.json`):\n")
+    w("| Request | Total server latency | Data load | Features | Model inference | Viterbi | Not in the breakdown (map and scoring) |\n|---|---|---|---|---|---|---|")
+    for name, r in (("First request, with map", c), ("Later request, with map", wm), ("Later request, without map", wn)):
+        w(f"| {name} | {r['reported_total_ms']:.0f} ms | {r['data_load_ms']:.0f} ms | {r['feature_extraction_ms']:.0f} ms | {r['model_inference_ms']:.0f} ms | {r['viterbi_decode_ms']:.0f} ms | {r['not_in_breakdown_ms']:.0f} ms |")
+    w(f"\nLoading the model and decoder when the server starts takes {lat['server_start_load_s']:.1f} s. Building the map accounts for about {wm['reported_total_ms'] - wn['reported_total_ms']:.0f} ms of a UI request; "
+      "the latency shown in the UI and in `api/logs/requests.log` includes it, while the breakdown fields cover only the four pipeline stages.\n")
     w("## 7.4 UI screenshots\n")
     w("![UI: trip list](../figures/ui_trip_list.png)\n")
     w("![UI: result for evaluator trip 00000015](../figures/ui_evaluation_result.png)\n")
@@ -164,14 +204,15 @@ def main() -> None:
         w("## 7.5 API request log (Laptop 1)\n")
         if (ROOT / "docs" / "figures" / "api_cmd_log.png").exists():
             w("Command window of the API server while it receives prediction requests for evaluator trips 00000015 and 00000049 "
-              "(each request is logged with trip ID, client, latency, accuracy and continuity):\n")
+              "(each request is logged with trip ID, client, latency, accuracy and continuity). This capture is a rehearsal with the API and the UI on one laptop, so the client "
+              "address is 127.0.0.1; in the two-laptop demo the same log shows the network address of Laptop 2.\n")
             w("![API server command window](../figures/api_cmd_log.png)\n")
         w("Last entries of `api/logs/requests.log` from the run shown above:\n")
         w("```\n" + "\n".join(log[-4:]) + "\n```\n")
 
     # ------------------------------------------------------------------ 8
     w("# 8. Academic integrity and AI assistance\n")
-    w("- The evaluator trips were not used for training, feature design, tuning, thresholds or model choice; they were scored once with the final pipeline. Reference labels never reach the model inputs or the UI.\n"
+    w("- The evaluator trips were not used for training, feature design, tuning, thresholds or model choice; no choice used them, and they were run through the finished pipeline. Reference labels never reach the model inputs or the UI.\n"
       "- Every reported number is produced by a script in the repository from a logged run (seeds, parameters, library versions and the feature-table hash are recorded per run).\n"
       "- AI coding assistants were used during development, mainly to help write and debug code and to structure the documentation. All experiments and results come from logged runs in this repository, and the team reviewed them.\n")
 

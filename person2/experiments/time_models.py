@@ -27,7 +27,7 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from person2 import config  # noqa: E402
 from person2.experiments.harness import load_table  # noqa: E402
-from person2.experiments.models import GAUSSIAN_NB, HGB, LOGREG, RANDOM_FOREST, XGBOOST  # noqa: E402
+from person2.experiments.models import GAUSSIAN_NB, HGB, LINEAR_SVM, LOGREG, RANDOM_FOREST, XGBOOST  # noqa: E402
 
 
 def main() -> None:
@@ -36,6 +36,7 @@ def main() -> None:
     ap.add_argument("--features", nargs="+", default=None)
     ap.add_argument("--tuned-params", type=Path, default=None)
     ap.add_argument("--repeats", type=int, default=5)
+    ap.add_argument("--only", nargs="+", default=None, help="time only these labels and update their rows in an existing timing.csv")
     ap.add_argument("--seed", type=int, default=config.GLOBAL_SEED)
     ap.add_argument("--out-dir", type=Path, default=config.REPO_ROOT / "experiments" / "results")
     a = ap.parse_args()
@@ -46,10 +47,12 @@ def main() -> None:
     Xt = te[cols].to_numpy("float32")
     n_trips, n_cand = te.trip_id.nunique(), len(te)
 
-    plan = [(s.name, s, {}) for s in (XGBOOST, GAUSSIAN_NB, LOGREG, RANDOM_FOREST, HGB)]
+    plan = [(s.name, s, {}) for s in (XGBOOST, GAUSSIAN_NB, LOGREG, RANDOM_FOREST, HGB, LINEAR_SVM)]
     if a.tuned_params:
         plan.insert(1, ("xgboost_tuned", XGBOOST, json.loads(a.tuned_params.read_text())["params"]))
 
+    if a.only:
+        plan = [x for x in plan if x[0] in a.only]
     rows = []
     for label, spec, params in plan:
         model = spec.build({**spec.defaults, **params}, a.seed)
@@ -70,6 +73,9 @@ def main() -> None:
 
     out = pd.DataFrame(rows)
     a.out_dir.mkdir(parents=True, exist_ok=True)
+    if a.only and (a.out_dir / "timing.csv").exists():
+        old = pd.read_csv(a.out_dir / "timing.csv")
+        out = pd.concat([old[~old.label.isin(out.label)], out], ignore_index=True)
     out.to_csv(a.out_dir / "timing.csv", index=False)
     (a.out_dir / "timing.json").write_text(json.dumps({
         "measured": datetime.now().isoformat(timespec="seconds"), "repeats": a.repeats, "seed": a.seed, "features": cols,

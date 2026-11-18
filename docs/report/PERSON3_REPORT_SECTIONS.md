@@ -22,7 +22,7 @@ For candidate arc *a* at observation *t*:
 
 - *p_t(a)* is the probability from the selected classifier (tuned XGBoost on the 13 features of Section 3.1, student-test ECE 0.005). For the training trips it is the out-of-fold probability, so no trip is scored by a model that saw it.
 - *d_t(a)* is the perpendicular distance in metres from the GPS point to the arc.
-- σ = 5.5 m is the GPS-noise scale (tuned). Person 1 measured a median GPS-to-road error of 4.7 m.
+- σ = 5.5 m is the GPS-noise scale (tuned). The median distance from a GPS point to its reference route is 5.6 m on the training trips and 5.2 m on the student-test trips (section 2.2).
 - w = 0.35 is the classifier weight (tuned).
 
 ### 5.3 Transition probabilities (Newson & Krumm formulation)
@@ -132,7 +132,7 @@ Both models were trained through Person 2's shared harness: 80 trips, trip-group
 **A1. Why suitable.** It is a fast, maximum-margin linear baseline from a different family (kernel-based). It tests how much of the problem a single weighted combination of the features can solve.
 
 **A2. Strengths and limitations.**
-- **Strengths:** among the fastest models (2.3 ms per trip) and it does not overfit.
+- **Strengths:** among the fastest models (7.0 s to train on all 80 training trips, 2.2 ms per trip to score; `person2/experiments/results/timing.csv`) and it does not overfit.
 - **Limitations:**
   - It cannot represent interactions between features, so it underfits: student-test Top-1 0.8176 against 0.8466 for XGBoost.
   - Its output is a margin, not a probability. Raw scores give log loss 0.3586 and ECE 0.239. Trip-grouped Platt calibration (`--calibrate sigmoid`) brings these to 0.1018 and 0.024 without changing the ranking (Top-1 is unchanged).

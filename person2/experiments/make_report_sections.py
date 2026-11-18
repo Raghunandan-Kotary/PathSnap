@@ -140,18 +140,19 @@ def main() -> None:
       f"({', '.join('`'+c+'`' for c in new_feats)}), computed by `person2/experiments/context_features.py` from the raw `.track` and `.nodes` files and the candidate list only "
       "(no labels, no reference route), so the API computes them live with the same function. The change from the 5 frozen features was agreed by the team "
       "and every model was re-run on the new table (see 3.1.1).\n")
-    w("**Metric definitions.** *Macro F1* averages the F1 of class 0 and class 1 at threshold 0.5. *Top-1 accuracy*: for each GPS point take the candidate "
+    w("**Metric definitions.** *Macro F1* averages the F1 of class 0 and class 1 at threshold 0.5; *macro precision* and *macro recall* average precision and recall over the two classes in the same way. *Top-1 accuracy*: for each GPS point take the candidate "
       "with the highest probability; it is correct if that candidate carries label 1 (ties go to the smaller arc id). *Candidate miss rate*: share of GPS points "
       "whose reference arc is not among the candidates, which caps Top-1. *Log loss* penalises confident wrong probabilities. *ECE* is the average gap between "
       "predicted probability and observed frequency over 10 bins. *Route continuity (classifier-only)*: share of consecutive top picks that are connected in the "
       "road network, from `evaluation/route_metrics.py` (Person 3), before any HMM decoding.\n")
-    tab = ["| Model | Algorithm family | Key configuration | CV macro F1 (mean ± std) | CV Top-1 | Test Top-1 | Route continuity (classifier-only, test) | Test log loss | Test macro F1 | Inference time |",
-           "|---|---|---|---|---|---|---|---|---|---|"]
+    tab = ["| Model | Algorithm family | Key configuration | CV macro F1 (mean ± std) | CV Top-1 | Test Top-1 | Route continuity (classifier-only, test) | Test log loss | Test macro F1 | Test macro precision | Test macro recall | Inference time |",
+           "|---|---|---|---|---|---|---|---|---|---|---|---|"]
     for lab, r in base2_t.iterrows():
         mm = json.loads((Path(r.run_dir) / "metrics.json").read_text())
         rc = mm.get("route_student_test", {}).get("route_continuity")
         tab.append(f"| {lab} | {r.family} | {fmt_config(r.key_config)} | {r.cv_macro_f1_mean:.4f} ± {r.cv_macro_f1_std:.4f} | {mm['cv_top1_mean']:.4f} | "
                    f"{r.test_top1:.4f} | {('%.4f' % rc) if rc is not None else 'not computed'} | {r.test_log_loss:.4f} | {r.test_macro_f1:.4f} | "
+                   f"{mm['student_test']['macro_precision']:.4f} | {mm['student_test']['macro_recall']:.4f} | "
                    f"{r.infer_ms_per_trip:.1f} ms per trip |")
     w("\n".join(tab) + "\n")
     w(f"Reference point: predicting the base rate for every candidate gives a student-test log loss of {base_ll:.4f}. "
@@ -270,15 +271,15 @@ def main() -> None:
         space = sc["search_space"]
         done, pruned = int((trials.state == "COMPLETE").sum()), int((trials.state == "PRUNED").sum())
         dur = pd.to_timedelta(trials["duration"]).dt.total_seconds()
-        w(f"1. *Hyperparameters searched:* {', '.join(space)}.")
-        w("2. *Ranges and distributions* (fixed before tuning; reasons in `person2/tuning/search_space.json`):\n")
+        w(f"**Q1.** *Hyperparameters searched:* {', '.join(space)}.")
+        w("**Q2.** *Ranges and distributions* (fixed before tuning; reasons in `person2/tuning/search_space.json`):\n")
         w("| Hyperparameter | Type | Range | Scale |\n|---|---|---|---|")
         for k, s in space.items():
             w(f"| {k} | {s['type']} | {s['low']} to {s['high']}{(' step ' + str(s['step'])) if 'step' in s else ''} | {'log' if s.get('log') else 'linear'} |")
-        w(f"\n3. *Objective:* mean over the 5 trip-grouped folds of the validation log loss (minimised), on the 80 training trips only. Why: {sc['objective_why']}")
-        w(f"4. *Trials:* {sc['n_trials_requested']} requested, {done} completed and {pruned} stopped early by the median pruner; {sc['algorithm']}, first {sc['n_startup_random_trials']} trials random; "
+        w(f"\n**Q3.** *Objective:* mean over the 5 trip-grouped folds of the validation log loss (minimised), on the 80 training trips only. Why: {sc['objective_why']}")
+        w(f"**Q4.** *Trials:* {sc['n_trials_requested']} requested, {done} completed and {pruned} stopped early by the median pruner; {sc['algorithm']}, first {sc['n_startup_random_trials']} trials random; "
           f"{dur.sum() / 60:.0f} minutes in total.")
-        w("5. *Best values* (trial " + str(bp["best_trial_number"]) + f", CV log loss {bp['best_value']:.4f}): "
+        w("**Q5.** *Best values* (trial " + str(bp["best_trial_number"]) + f", CV log loss {bp['best_value']:.4f}): "
           + ", ".join(f"{k} = {v:.4g}" if isinstance(v, float) else f"{k} = {v}" for k, v in bp["params"].items()) + ".")
         u, t_ = tv.loc["untuned"], tv.loc["tuned"]
         cv_ll = lambda rid: json.loads((a.log_dir / rid / "metrics.json").read_text())["cv_log_loss_mean"]  # noqa: E731
@@ -288,7 +289,7 @@ def main() -> None:
         if timing is not None and "xgboost_tuned" in timing.index:
             fu, ft = float(timing.loc["xgboost", "fit_time_s"]), float(timing.loc["xgboost_tuned", "fit_time_s"])
             iu, it = float(timing.loc["xgboost", "infer_ms_per_trip"]), float(timing.loc["xgboost_tuned", "infer_ms_per_trip"])
-        w("6. *Tuned vs untuned* (same table, folds, seed and metrics):\n")
+        w("**Q6.** *Tuned vs untuned* (same table, folds, seed and metrics):\n")
         w("| Metric | Untuned (defaults) | Tuned | Difference |\n|---|---|---|---|")
         for name, uv, tv_, nd in (("CV log loss (the objective)", cu, ct, 4), ("CV macro F1", u["cv_macro_f1_mean"], t_["cv_macro_f1_mean"], 4),
                                   ("Student-test Top-1", u["student_test_top1"], t_["student_test_top1"], 4), ("Student-test macro F1", u["student_test_macro_f1"], t_["student_test_macro_f1"], 4),
@@ -317,9 +318,9 @@ def main() -> None:
         for pname, s in fin.items():
             w(f"| {pname} | {s['n_trips']} | {s['pooled_pointwise_accuracy']:.4f} | {s['mean_trip_accuracy']:.4f} | {s['mean_route_continuity']:.4f} | "
               + ", ".join(f"{k} ({v})" for k, v in s["execution_modes"].items()) + " |")
-        w("\nThe evaluator partition was scored once, after every model, feature and decoder choice had been fixed on the training and student-test trips; nothing was tuned on it.\n")
+        w("\nNo model, feature or decoder choice used the evaluator trips: every choice was made on the training trips (cross-validation) and the student-test trips, and the evaluator partition was then run through the finished pipeline.\n")
     a.out.parent.mkdir(parents=True, exist_ok=True)
-    a.out.write_text("\n".join(out).replace("\n Loss curves:", " Loss curves:"), encoding="utf-8")
+    a.out.write_text("\n".join(out).replace("\n Loss curves:", " Loss curves:").replace("\n**Q", "\n\n**Q"), encoding="utf-8")
     print(f"wrote {a.out}")
 
 

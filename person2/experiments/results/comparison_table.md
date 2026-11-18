@@ -5,4 +5,4 @@
 | logistic_regression | Linear (logistic regression) | class_weight=balanced, max_iter=1000 | 0.7225 ± 0.0421 | 0.8093 | 0.9151 | 0.2311 | 0.7452 | 2.6 / 0.10 |
 | random_forest | Tree ensemble (bagging) | class_weight=balanced_subsample, max_depth=12, n_estimators=100 | 0.8678 ± 0.0379 | 0.8444 | 0.9326 | 0.1020 | 0.8844 | 22.3 / 0.81 |
 | hist_gradient_boosting | Boosting (histogram gradient boosting) | class_weight=balanced, learning_rate=0.05, max_iter=150 | 0.8513 ± 0.0616 | 0.8449 | 0.9287 | 0.1079 | 0.8797 | 36.3 / 1.31 |
-| linear_svm | Kernel-based (linear SVM) | C=1, class_weight=balanced, max_iter=5000 | 0.6965 ± 0.0503 | 0.8176 | 0.9132 | 0.3586 | 0.7202 | 2.3 / 0.08 |
+| linear_svm | Kernel-based (linear SVM) | C=1, class_weight=balanced, max_iter=5000 | 0.6965 ± 0.0503 | 0.8176 | 0.9132 | 0.3586 | 0.7202 | 2.2 / 0.08 |

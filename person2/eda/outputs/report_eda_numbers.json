@@ -1,0 +1,22 @@
+{
+  "train": {
+    "steps": 208337,
+    "share_1s": 0.96503741534149,
+    "gps_points": 208417,
+    "median_gps_to_route_m": 5.614389200100092,
+    "p95_gps_to_route_m": 140.2876124294617,
+    "share_within_30m": 0.8782057125858256
+  },
+  "student_test": {
+    "steps": 19150,
+    "share_1s": 0.9862140992167102,
+    "gps_points": 19160,
+    "median_gps_to_route_m": 5.164997525442123,
+    "p95_gps_to_route_m": 16.787739298890063,
+    "share_within_30m": 0.992536534446764
+  },
+  "all_known": {
+    "share_1s": 0.9668200820266653,
+    "median_gps_to_route_m": 5.5722287136363855
+  }
+}
