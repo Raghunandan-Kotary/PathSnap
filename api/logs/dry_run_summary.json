@@ -1,0 +1,92 @@
+[
+  {
+    "trip_id": "00000000",
+    "status": "PASS",
+    "observations": 2503,
+    "top1_acc_pct": 42.99,
+    "continuity_pct": 87.01,
+    "server_time_ms": 1585.32,
+    "client_rtt_ms": 1598.1
+  },
+  {
+    "trip_id": "00000007",
+    "status": "PASS",
+    "observations": 1354,
+    "top1_acc_pct": 48.3,
+    "continuity_pct": 84.33,
+    "server_time_ms": 895.52,
+    "client_rtt_ms": 904.2
+  },
+  {
+    "trip_id": "00000009",
+    "status": "PASS",
+    "observations": 1049,
+    "top1_acc_pct": 53.38,
+    "continuity_pct": 63.74,
+    "server_time_ms": 1291.16,
+    "client_rtt_ms": 1299.35
+  },
+  {
+    "trip_id": "00000040",
+    "status": "PASS",
+    "observations": 2995,
+    "top1_acc_pct": 41.64,
+    "continuity_pct": 84.87,
+    "server_time_ms": 1480.67,
+    "client_rtt_ms": 1487.41
+  },
+  {
+    "trip_id": "00000052",
+    "status": "PASS",
+    "observations": 262,
+    "top1_acc_pct": 51.15,
+    "continuity_pct": 60.92,
+    "server_time_ms": 705.93,
+    "client_rtt_ms": 711.65
+  },
+  {
+    "trip_id": "00000056",
+    "status": "PASS",
+    "observations": 3958,
+    "top1_acc_pct": 77.29,
+    "continuity_pct": 65.13,
+    "server_time_ms": 2577.62,
+    "client_rtt_ms": 2586.57
+  },
+  {
+    "trip_id": "00000065",
+    "status": "PASS",
+    "observations": 768,
+    "top1_acc_pct": 58.85,
+    "continuity_pct": 71.45,
+    "server_time_ms": 1168.94,
+    "client_rtt_ms": 1176.74
+  },
+  {
+    "trip_id": "00000076",
+    "status": "PASS",
+    "observations": 1486,
+    "top1_acc_pct": 36.74,
+    "continuity_pct": 66.06,
+    "server_time_ms": 1834.89,
+    "client_rtt_ms": 1843.28
+  },
+  {
+    "trip_id": "00000077",
+    "status": "PASS",
+    "observations": 3911,
+    "top1_acc_pct": 42.65,
+    "continuity_pct": 81.71,
+    "server_time_ms": 2075.31,
+    "client_rtt_ms": 2083.57
+  },
+  {
+    "trip_id": "00000091",
+    "status": "PASS",
+    "observations": 874,
+    "top1_acc_pct": 47.83,
+    "continuity_pct": 69.64,
+    "server_time_ms": 1131.32,
+    "client_rtt_ms": 1139.21
+  }
+]

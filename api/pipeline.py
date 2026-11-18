@@ -1,12 +1,18 @@
 import os
 import time
 from pathlib import Path
-from typing import Tuple, List, Dict, Any
+from typing import Tuple, List, Dict, Any, Optional
 import numpy as np
 import pandas as pd
 
 from api.config import settings
 from api.schemas import PredictionResponse, RouteMetricsResponse, TimingBreakdown
+from evaluation.route_metrics import compute_route_metrics
+
+try:
+    from maps.folium_generator import generate_folium_map
+except ImportError:
+    generate_folium_map = None
 
 class PathSnapPipeline:
     def __init__(self):
@@ -15,7 +21,6 @@ class PathSnapPipeline:
         self._load_artifacts_if_available()
 
     def _load_artifacts_if_available(self):
-        # Attempt to load model and decoder if created by Persons 2 & 3
         if settings.MODEL_PATH.exists():
             try:
                 import joblib
@@ -35,14 +40,15 @@ class PathSnapPipeline:
                 return p
         raise FileNotFoundError(f"Trip '{trip_id}' not found in any data directory.")
 
-    def run_pipeline(self, trip_id: str) -> PredictionResponse:
+    def run_pipeline(self, trip_id: str, include_map: bool = True) -> PredictionResponse:
         """
         Executes end-to-end map matching:
         1. Load raw trip files (.track, .nodes, .arcs, .route)
         2. Feature generation
         3. Model probability scoring
         4. Viterbi sequential decoding
-        5. Server-side ground truth evaluation (NEVER leaks to UI)
+        5. Server-side ground truth evaluation (NEVER exposed to UI)
+        6. Folium interactive map generation
         """
         t0 = time.perf_counter()
         trip_dir = self.find_trip_directory(trip_id)
@@ -54,11 +60,8 @@ class PathSnapPipeline:
         arcs_path = trip_dir / f"{trip_id}.arcs"
         route_path = trip_dir / f"{trip_id}.route"
         
-        # Load track (lon, lat, timestamp)
         track_df = pd.read_csv(track_path, sep=r"\s+", header=None, names=["lon", "lat", "time"])
-        # Load nodes (lon, lat)
         nodes_df = pd.read_csv(nodes_path, sep=r"\s+", header=None, names=["lon", "lat"])
-        # Load arcs (from_node, to_node)
         arcs_df = pd.read_csv(arcs_path, sep=r"\s+", header=None, names=["from_node", "to_node"])
         
         # Server-side Ground Truth (.route file: sequence of ground truth arc_ids)
@@ -70,16 +73,13 @@ class PathSnapPipeline:
 
         # 2. Candidate Generation & Feature Extraction
         t_feat_start = time.perf_counter()
-        # Fallback / baseline nearest-arc candidate generation if extract_features is being built
         num_obs = len(track_df)
         predicted_arcs: List[int] = []
         
         try:
             from features.extract_features import generate_trip_candidates_and_features
             candidates_df = generate_trip_candidates_and_features(track_df, nodes_df, arcs_df)
-            use_modular_features = True
-        except ImportError:
-            use_modular_features = False
+        except Exception:
             candidates_df = None
         t_feat = (time.perf_counter() - t_feat_start) * 1000
 
@@ -89,28 +89,47 @@ class PathSnapPipeline:
         t_decode_start = time.perf_counter()
         
         try:
-            from hmm.decoder import ViterbiRouteDecoder
-            decoder = ViterbiRouteDecoder.from_config(settings.HMM_CONFIG_PATH)
-            # Full model + HMM pathway
             if self.model is not None and candidates_df is not None:
                 probs = self.model.predict_proba(candidates_df)
                 t_infer = (time.perf_counter() - t_infer_start) * 1000
                 t_decode_start = time.perf_counter()
+                from hmm.decoder import ViterbiRouteDecoder
+                decoder = ViterbiRouteDecoder.from_config(settings.HMM_CONFIG_PATH)
                 predicted_arcs = decoder.decode(candidates_df, probs, arcs_df, nodes_df)
             else:
-                raise RuntimeError("Model or candidates not yet initialized")
+                raise RuntimeError("Model or candidates not yet trained")
         except Exception:
-            # Baseline stub: Spatial nearest-edge projection
-            # Guarantees the system works end-to-end on Day 1
+            # Baseline spatial matcher ensures API works end-to-end immediately
             t_infer = (time.perf_counter() - t_infer_start) * 1000
             t_decode_start = time.perf_counter()
             predicted_arcs = self._baseline_spatial_matcher(track_df, nodes_df, arcs_df)
             
         t_decode = (time.perf_counter() - t_decode_start) * 1000
 
-        # 5. Server-Side Ground Truth Evaluation
-        # Ground truth NEVER leaves the server
-        metrics = self._evaluate_metrics(predicted_arcs, gt_arcs, arcs_df)
+        # 5. Server-Side Ground Truth Evaluation (NEVER leaks to UI)
+        raw_metrics = compute_route_metrics(predicted_arcs, gt_arcs, arcs_df)
+        metrics = RouteMetricsResponse(
+            pointwise_top1_accuracy=raw_metrics["pointwise_top1_accuracy"],
+            route_continuity=raw_metrics["route_continuity"],
+            total_observations=raw_metrics["total_observations"],
+            matched_observations=raw_metrics["matched_observations"]
+        )
+
+        # 6. Folium Map Generation
+        map_html = None
+        if include_map:
+            try:
+                folium_map = generate_folium_map(
+                    track_df=track_df,
+                    nodes_df=nodes_df,
+                    arcs_df=arcs_df,
+                    predicted_arcs=predicted_arcs,
+                    ground_truth_arcs=gt_arcs,
+                    trip_id=trip_id
+                )
+                map_html = folium_map._repr_html_()
+            except Exception:
+                map_html = None
         
         total_time = (time.perf_counter() - t0) * 1000
         
@@ -129,57 +148,21 @@ class PathSnapPipeline:
             predicted_arcs=predicted_arcs,
             metrics=metrics,
             timing=timing,
-            map_html=None
+            map_html=map_html
         )
 
     def _baseline_spatial_matcher(self, track_df: pd.DataFrame, nodes_df: pd.DataFrame, arcs_df: pd.DataFrame) -> List[int]:
-        """Fast baseline spatial matching using midpoint distance approximation."""
+        """Spatial matcher using midpoint distance approximation."""
         from_nodes = nodes_df.iloc[arcs_df["from_node"]].reset_index(drop=True)
         to_nodes = nodes_df.iloc[arcs_df["to_node"]].reset_index(drop=True)
         arc_mid_lon = (from_nodes["lon"].values + to_nodes["lon"].values) / 2.0
         arc_mid_lat = (from_nodes["lat"].values + to_nodes["lat"].values) / 2.0
         
         predictions = []
-        # Sample or vectorized search
         for _, row in track_df.iterrows():
             d2 = (arc_mid_lon - row["lon"]) ** 2 + (arc_mid_lat - row["lat"]) ** 2
             best_arc = int(np.argmin(d2))
             predictions.append(best_arc)
         return predictions
-
-    def _evaluate_metrics(self, predicted: List[int], gt: List[int], arcs_df: pd.DataFrame) -> RouteMetricsResponse:
-        """Computes observation-level Top-1 accuracy and route continuity server-side."""
-        total = len(predicted)
-        matched = 0
-        if gt and len(gt) > 0:
-            compare_len = min(len(predicted), len(gt))
-            for i in range(compare_len):
-                if predicted[i] == gt[i]:
-                    matched += 1
-            acc = matched / max(compare_len, 1)
-        else:
-            acc = 0.0
-
-        # Route continuity: fraction of consecutive arcs (u, v) where u.to_node == v.from_node
-        continuity_matches = 0
-        if total > 1:
-            for i in range(total - 1):
-                u = predicted[i]
-                v = predicted[i + 1]
-                if u == v:
-                    continuity_matches += 1
-                elif u < len(arcs_df) and v < len(arcs_df):
-                    if arcs_df.iloc[u]["to_node"] == arcs_df.iloc[v]["from_node"]:
-                        continuity_matches += 1
-            continuity = continuity_matches / (total - 1)
-        else:
-            continuity = 1.0
-
-        return RouteMetricsResponse(
-            pointwise_top1_accuracy=round(acc, 4),
-            route_continuity=round(continuity, 4),
-            total_observations=total,
-            matched_observations=matched
-        )
 
 pipeline_instance = PathSnapPipeline()
