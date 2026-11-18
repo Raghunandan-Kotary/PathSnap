@@ -1,0 +1,6 @@
+Model,Algorithm Family,Key Configuration,CV Macro F1,CV Top-1 Accuracy,Student-Test Macro F1,Student-Test Top-1 Accuracy,Log Loss,Inference Time
+Model 1: Logistic Regression,Linear,"StandardScaler, L2 Regularization, Balanced Weights",0.6457,58.16%,0.6449,66.03%,0.4299,36.86 ms
+Model 2: Distance-Weighted KNN,Instance-based,"k=15 Neighbors, Distance-Weighted, StandardScaler",0.845,26.51%,0.8018,19.59%,0.2791,2540.00 ms
+Model 3: Random Forest,Tree Ensemble,"100 Trees, max_depth=12, balanced_subsample",0.8473,32.85%,0.7604,72.12%,0.2143,1280.00 ms
+Model 4: HistGradientBoosting,Boosting,"150 Trees, lr=0.05, class_weight=balanced",0.7347,63.87%,0.7415,72.46%,0.236,1534.81 ms
+Model 5: Multi-Layer Perceptron,Neural Network,"Layers (64, 32), ReLU, Early Stopping, StandardScaler",0.8545,29.73%,0.8175,72.84%,0.1324,420.00 ms
