@@ -57,12 +57,13 @@ def list_evaluation_trips():
     """Returns the list of evaluation trip IDs available on the server."""
     trips = []
     
-    # Check student_test directory first
-    if settings.STUDENT_TEST_DIR.exists():
-        trips = [
-            d.name for d in settings.STUDENT_TEST_DIR.iterdir()
-            if d.is_dir() and not d.name.startswith(".")
-        ]
+    # Scan evaluator_test and student_test directories
+    for test_dir in [settings.EVALUATOR_TEST_DIR, settings.STUDENT_TEST_DIR]:
+        if test_dir.exists():
+            trips.extend([
+                d.name for d in test_dir.iterdir()
+                if d.is_dir() and not d.name.startswith(".")
+            ])
     
     # If not populated yet, fall back to default student test trips
     if not trips:
