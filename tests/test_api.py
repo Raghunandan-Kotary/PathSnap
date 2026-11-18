@@ -33,10 +33,11 @@ def test_trips_endpoint(client):
     assert response.status_code == 200
     data = response.json()
     assert "trips" in data
-    assert data["count"] >= 10
-    # Ensure known evaluation trips are present
-    assert "00000000" in data["trips"]
-    assert "00000040" in data["trips"]
+    assert data["count"] == 10
+    # Evaluator trips are listed when installed, otherwise the student-test trips
+    expected = settings.EVALUATOR_TEST_DIR if settings.EVALUATOR_TEST_DIR.exists() else settings.STUDENT_TEST_DIR
+    if expected.exists():
+        assert data["trips"] == sorted(d.name for d in expected.iterdir() if d.is_dir())
 
 def test_predict_valid_trip(client):
     """Verifies that the prediction pipeline executes and returns valid metrics."""
