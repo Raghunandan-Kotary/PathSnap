@@ -37,7 +37,10 @@ def _arcs_near_track(
     *any* GPS point. Needed because a long trip's bounding box can cover
     almost the whole region-wide .nodes/.arcs extract (tens of thousands of
     arcs), while the road actually touched by the trip is a thin corridor
-    around the GPS trace.
+    around the GPS trace. (A `max_network_arcs` cap on an unfiltered scan
+    would instead render an arbitrary, possibly-unrelated subset -- this
+    scales with the real trajectory rather than cutting off at a fixed
+    arc count.)
     """
     ref_lon, ref_lat = nodes_df["lon"].median(), nodes_df["lat"].median()
     node_x, node_y = project_coords(nodes_df["lon"].values, nodes_df["lat"].values, ref_lon, ref_lat)
@@ -56,29 +59,15 @@ def _arcs_near_track(
     return mask
 
 
-def generate_trip_map(
+def _build_map(
     track_df: pd.DataFrame,
     nodes_df: pd.DataFrame,
     arcs_df: pd.DataFrame,
     predicted_route: List[int],
     ground_truth_route: Optional[List[int]] = None,
-    save_path: Optional[Path] = None,
     road_corridor_radius_m: float = 150.0,
-) -> str:
-    """
-    Returns the map as an HTML string (suitable for embedding directly in
-    the Streamlit UI via `st.components.v1.html`, per `map_html` in
-    api/schemas.py). If `save_path` is given, also writes the same HTML
-    there (e.g. maps/html/<trip_id>.html) for static serving.
-
-    Layers (toggleable via LayerControl):
-      - Raw GPS points (blue dots)
-      - Road network (gray lines)
-      - Reference route (green line) -- only if ground_truth_route is given;
-        omit when calling from anywhere the UI can see the response (ground
-        truth must never leave the server, per docs/SYSTEM_ARCHITECTURE.md).
-      - Predicted route (red line)
-    """
+) -> folium.Map:
+    """Builds the folium.Map object (shared by generate_trip_map and generate_folium_map)."""
     center_lat, center_lon = track_df["lat"].mean(), track_df["lon"].mean()
     fmap = folium.Map(
         location=[center_lat, center_lon], zoom_start=14, tiles="OpenStreetMap", prefer_canvas=True
@@ -93,6 +82,7 @@ def generate_trip_map(
             fill=True,
             fill_opacity=0.8,
             weight=1,
+            tooltip=f"t={row['time']}s",
         ).add_to(gps_layer)
     gps_layer.add_to(fmap)
 
@@ -144,13 +134,59 @@ def generate_trip_map(
         [track_df["lat"].min(), track_df["lon"].min()],
         [track_df["lat"].max(), track_df["lon"].max()],
     ])
+    return fmap
 
+
+def generate_trip_map(
+    track_df: pd.DataFrame,
+    nodes_df: pd.DataFrame,
+    arcs_df: pd.DataFrame,
+    predicted_route: List[int],
+    ground_truth_route: Optional[List[int]] = None,
+    save_path: Optional[Path] = None,
+    road_corridor_radius_m: float = 150.0,
+) -> str:
+    """
+    Returns the map as an HTML string (suitable for embedding directly in
+    the Streamlit UI via `st.components.v1.html`, per `map_html` in
+    api/schemas.py). If `save_path` is given, also writes the same HTML
+    there (e.g. maps/html/<trip_id>.html) for static serving.
+
+    Layers (toggleable via LayerControl):
+      - Raw GPS points (blue dots)
+      - Road network (gray lines)
+      - Reference route (green line) -- only if ground_truth_route is given;
+        omit when calling from anywhere the UI can see the response (ground
+        truth must never leave the server, per docs/SYSTEM_ARCHITECTURE.md).
+      - Predicted route (red line)
+    """
+    fmap = _build_map(track_df, nodes_df, arcs_df, predicted_route, ground_truth_route, road_corridor_radius_m)
     html = fmap.get_root().render()
     if save_path is not None:
         save_path = Path(save_path)
         save_path.parent.mkdir(parents=True, exist_ok=True)
         save_path.write_text(html, encoding="utf-8")
     return html
+
+
+def generate_folium_map(
+    track_df: pd.DataFrame,
+    nodes_df: pd.DataFrame,
+    arcs_df: pd.DataFrame,
+    predicted_arcs: List[int],
+    ground_truth_arcs: Optional[List[int]] = None,
+    trip_id: str = "Trip",
+) -> folium.Map:
+    """
+    Alias matching api/pipeline.py's actual call signature (kwargs
+    predicted_arcs/ground_truth_arcs/trip_id, a folium.Map return value
+    rendered there via `.repr_html_()`) rather than docs/INTERFACES.md's
+    documented generate_trip_map. Same map; just the object instead of
+    pre-rendered HTML.
+    """
+    fmap = _build_map(track_df, nodes_df, arcs_df, predicted_arcs, ground_truth_arcs)
+    fmap.get_root().html.add_child(folium.Element(f'<div style="display:none">{trip_id}</div>'))
+    return fmap
 
 
 def _add_legend(fmap: folium.Map, show_reference: bool) -> None:

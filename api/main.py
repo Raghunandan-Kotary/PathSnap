@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from datetime import datetime
 import time
 from fastapi import FastAPI, HTTPException, Request
@@ -9,13 +10,21 @@ from api.schemas import HealthResponse, TripListResponse, PredictionResponse, Er
 from api.pipeline import pipeline_instance
 from api.logger import api_logger, log_evaluation_request
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    api_logger.info("PathSnap FastAPI Service started successfully on Laptop 1.")
+    api_logger.info(f"Loaded configuration: Host={settings.HOST}, Port={settings.PORT}")
+    yield
+    api_logger.info("PathSnap FastAPI Service shutting down.")
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
-    description="PathSnap Distributed Map-Matching & Route Reconstruction Backend (Laptop 1)"
+    description="PathSnap Distributed Map-Matching & Route Reconstruction Backend (Laptop 1)",
+    lifespan=lifespan
 )
 
-# Enable CORS for Laptop 2 access across LAN
+# Enable CORS for Laptop 2 access across local network
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -23,11 +32,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-@app.on_event("startup")
-def startup_event():
-    api_logger.info("PathSnap FastAPI Service started successfully on Laptop 1.")
-    api_logger.info(f"Loaded configuration: Host={settings.HOST}, Port={settings.PORT}")
 
 @app.get("/", tags=["General"])
 def root():
