@@ -99,7 +99,8 @@ def predict_trip(trip_id: str, request: Request):
             client_ip=client_ip,
             latency_ms=latency,
             accuracy=response.metrics.pointwise_top1_accuracy,
-            continuity=response.metrics.route_continuity
+            continuity=response.metrics.route_continuity,
+            mode=response.execution_mode
         )
         return response
     except FileNotFoundError as fnf:

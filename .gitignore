@@ -76,6 +76,8 @@ models/saved/*.joblib
 models/saved/*.pt
 models/saved/*.pkl
 !models/saved/.gitkeep
+!models/saved/best_model.joblib
+!models/final/model.joblib
 
 # Map HTML exports (generated dynamically)
 maps/html/*.html

@@ -28,8 +28,8 @@ def setup_logger():
 
 api_logger = setup_logger()
 
-def log_evaluation_request(trip_id: str, client_ip: str, latency_ms: float, accuracy: float, continuity: float):
+def log_evaluation_request(trip_id: str, client_ip: str, latency_ms: float, accuracy: float, continuity: float, mode: str = "unknown"):
     api_logger.info(
-        f"EVALUATOR_REQ | Trip: {trip_id} | Client: {client_ip} | "
+        f"EVALUATOR_REQ | Trip: {trip_id} | Client: {client_ip} | Mode: {mode} | "
         f"Latency: {latency_ms:.2f}ms | Top-1 Acc: {accuracy * 100:.2f}% | Continuity: {continuity * 100:.2f}%"
     )

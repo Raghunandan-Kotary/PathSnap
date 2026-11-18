@@ -3,6 +3,6 @@ echo ========================================================
 echo   Starting PathSnap Evaluator Dashboard on Laptop 2
 echo ========================================================
 cd %~dp0\..
-call .venv\Scripts\activate
+if exist .venv\Scripts\activate call .venv\Scripts\activate
 streamlit run ui/app.py
 pause

@@ -119,6 +119,7 @@ class ViterbiRouteDecoder:
         if candidates_df.empty:
             return []
 
+        self._dist_cache = {}
         df = candidates_df.copy()
         df["_prob"] = probabilities if probabilities is not None else np.nan
         arc_edge_lookup = build_arc_edge_lookup(road_graph)
@@ -175,12 +176,17 @@ class ViterbiRouteDecoder:
 
         return np.log(np.clip(blended, _LOG_EPS, None))
 
-    def _network_dist_from_source(self, source_node: int, road_graph: nx.MultiDiGraph) -> dict:
-        """Single-source shortest path lengths (meters) from source_node to every reachable node."""
+    def _network_dist_from_source(self, source_node: int, road_graph: nx.MultiDiGraph, cutoff: float = 250.0) -> dict:
+        """Single-source shortest path lengths (meters) from source_node with cutoff and per-trip cache."""
+        if hasattr(self, "_dist_cache") and source_node in self._dist_cache:
+            return self._dist_cache[source_node]
         try:
-            return nx.single_source_dijkstra_path_length(road_graph, source_node, weight="length_m")
+            res = nx.single_source_dijkstra_path_length(road_graph, source_node, cutoff=cutoff, weight="length_m")
         except nx.NodeNotFound:
-            return {}
+            res = {}
+        if hasattr(self, "_dist_cache"):
+            self._dist_cache[source_node] = res
+        return res
 
     def _transition_log_prob_from_lengths(
         self,

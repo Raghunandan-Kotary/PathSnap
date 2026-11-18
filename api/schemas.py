@@ -33,6 +33,7 @@ class TimingBreakdown(BaseModel):
 class PredictionResponse(BaseModel):
     trip_id: str
     status: str = "success"
+    execution_mode: str = Field(..., description="Pipeline execution mode: 'model_plus_viterbi', 'viterbi_distance_emissions', or 'baseline_spatial_matcher'")
     num_observations: int
     predicted_arcs: List[int]
     metrics: RouteMetricsResponse

@@ -34,8 +34,8 @@ def build_road_graph(nodes_df: pd.DataFrame, arcs_df: pd.DataFrame) -> nx.MultiD
     for node_id, x, y in zip(nodes_df["node_id"], xs, ys):
         graph.add_node(int(node_id), x=float(x), y=float(y))
 
-    for _, row in arcs_df.iterrows():
-        u, v, arc_id = int(row["from_node"]), int(row["to_node"]), int(row["arc_id"])
+    for u, v, arc_id in zip(arcs_df["from_node"], arcs_df["to_node"], arcs_df["arc_id"]):
+        u, v, arc_id = int(u), int(v), int(arc_id)
         ux, uy = graph.nodes[u]["x"], graph.nodes[u]["y"]
         vx, vy = graph.nodes[v]["x"], graph.nodes[v]["y"]
         length_m = float(np.hypot(vx - ux, vy - uy))

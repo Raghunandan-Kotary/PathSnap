@@ -40,10 +40,12 @@ def dry_run():
             data = res.json()
             metrics = data["metrics"]
             timing = data["timing"]
+            exec_mode = data.get("execution_mode", "unknown")
             
             row = {
                 "trip_id": trip_id,
                 "status": "PASS",
+                "execution_mode": exec_mode,
                 "observations": metrics["total_observations"],
                 "top1_acc_pct": round(metrics["pointwise_top1_accuracy"] * 100, 2),
                 "continuity_pct": round(metrics["route_continuity"] * 100, 2),
@@ -51,7 +53,7 @@ def dry_run():
                 "client_rtt_ms": round(rtt, 2)
             }
             results.append(row)
-            print(f"[{i:02d}/10] Trip {trip_id} | SUCCESS | Obs: {row['observations']:4d} | "
+            print(f"[{i:02d}/10] Trip {trip_id} | SUCCESS ({exec_mode}) | Obs: {row['observations']:4d} | "
                   f"Top-1: {row['top1_acc_pct']:5.2f}% | Continuity: {row['continuity_pct']:5.2f}% | "
                   f"Server Latency: {row['server_time_ms']:6.2f} ms")
         else:

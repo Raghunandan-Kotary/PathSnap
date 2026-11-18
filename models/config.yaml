@@ -1,10 +1,11 @@
-# PathSnap Model Configuration (Person 2)
-model_name: "PathSnap_Best_Classifier"
+# PathSnap Model Configuration (Person 2: Tuned Final Model)
+# Extracted from real Optuna Bayesian optimization trial 10 (person2/tuning/studies/xgboost_cv_log_loss/)
+model_name: "PathSnap_Best_Classifier_XGBoost"
 version: "1.0.0"
-algorithm_family: "Boosting"
-selected_model: "LightGBM"
+algorithm_family: "Boosting (Gradient-Boosted Decision Trees)"
+selected_model: "xgboost"
 
-# Frozen features list
+# Frozen feature columns (Person 1 commit 86ad172)
 features:
   - "feat_dist_to_arc"
   - "feat_arc_length"
@@ -12,18 +13,28 @@ features:
   - "feat_speed"
   - "feat_time_gap"
 
-# Hyperparameters (Tuned via Optuna Bayesian Optimization)
+# Real Tuned Hyperparameters (Best Trial #10 from Bayesian Search)
 hyperparameters:
-  n_estimators: 150
-  learning_rate: 0.05
+  n_estimators: 450
   max_depth: 6
-  num_leaves: 31
-  subsample: 0.8
-  colsample_bytree: 0.8
+  learning_rate: 0.010188
+  subsample: 0.5230
+  colsample_bytree: 0.9506
+  min_child_weight: 1.2506
+  reg_lambda: 0.01093
+  gamma: 1.1835
   random_state: 42
 
-# Training metadata
-training_trips: 80
-cv_folds: 5
-primary_metric: "Macro F1-score"
-calibration: "isotonic"
+# Training & Validation Metrics (from logged runs)
+training_partition: "80 training trips (2,546,809 candidate rows)"
+test_partition: "10 student-test trips (276,962 candidate rows)"
+cv_strategy: "Trip-grouped 5-fold cross-validation"
+optimization_objective: "CV log loss (mean validation log loss)"
+tuning_trials_completed: 15
+metrics:
+  cv_log_loss: 0.1310
+  cv_macro_f1: 0.7920
+  student_test_top1_accuracy: 0.7253
+  student_test_macro_f1: 0.8157
+  student_test_log_loss: 0.1080
+  inference_time_ms_per_trip: 26.7
