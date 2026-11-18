@@ -1,0 +1,17 @@
+{
+  "measured": "2026-11-18T15:20:22",
+  "repeats": 5,
+  "seed": 42,
+  "features": [
+    "feat_dist_to_arc",
+    "feat_arc_length",
+    "feat_heading_diff",
+    "feat_speed",
+    "feat_time_gap"
+  ],
+  "n_test_trips": 10,
+  "n_test_candidates": 276962,
+  "logical_cpus": 16,
+  "platform": "Windows-10-10.0.26300-SP0",
+  "note": "fit time = one fit on all 80 training trips; inference = median of repeated predict_proba on the complete student-test set after a warm-up call"
+}

@@ -1,0 +1,16 @@
+# Versions used for Person 2's track (Python 3.11.9). Person 4 merges these into the repo-level requirements.txt.
+numpy==2.4.6
+pandas==3.0.6
+scipy==1.17.1
+scikit-learn==1.9.1
+xgboost==3.2.0
+lightgbm==4.7.0
+optuna==5.1.0
+matplotlib==3.11.2
+networkx==3.6.1
+folium==1.0.0
+shapely==2.2.0
+pyproj==3.7.2
+pyarrow==26.0.1
+joblib==1.6.0
+python-docx==1.2.0

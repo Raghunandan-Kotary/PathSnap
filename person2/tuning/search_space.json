@@ -1,0 +1,33 @@
+{
+  "_comment": "Search spaces for Bayesian optimisation (Optuna TPE). Ranges are fixed BEFORE any tuning run and are never edited after seeing student-test or evaluator results.",
+  "xgboost": {
+    "n_estimators":     {"type": "int",   "low": 100,  "high": 500,  "step": 50,
+                         "why": "Boosting rounds. Below 100 the default learning rate underfits. The upper bound of 500 is a compute-budget choice (each fit on the 2M-row training table takes about 30 s at 300 rounds), made before any tuning run; learning rate and rounds trade off, so a lower learning rate can still be explored within this cap."},
+    "max_depth":        {"type": "int",   "low": 3,    "high": 10,
+                         "why": "Tree depth controls interaction order between distance, heading, speed and arc features. Depth 3 is close to additive; depth 10 can memorise individual arcs, so the upper end tests overfitting."},
+    "learning_rate":    {"type": "float", "low": 0.01, "high": 0.3,  "log": true,
+                         "why": "Step size shrinkage. Its effect is multiplicative, so it is sampled on a log scale; it trades off against n_estimators."},
+    "subsample":        {"type": "float", "low": 0.5,  "high": 1.0,
+                         "why": "Row sampling per tree. Candidates from the same GPS point are strongly correlated, so some row subsampling acts as regularisation."},
+    "colsample_bytree": {"type": "float", "low": 0.5,  "high": 1.0,
+                         "why": "Feature sampling per tree. Several features (distance, distance rank, distance minus minimum) are correlated; sampling decorrelates trees."},
+    "min_child_weight": {"type": "float", "low": 1.0,  "high": 20.0, "log": true,
+                         "why": "Minimum hessian mass in a leaf. Larger values stop leaves fitting tiny groups of candidates from one trip."},
+    "reg_lambda":       {"type": "float", "low": 0.01, "high": 50.0, "log": true,
+                         "why": "L2 penalty on leaf weights; smooths predicted probabilities, which matters because the HMM consumes them."},
+    "gamma":            {"type": "float", "low": 0.0,  "high": 5.0,
+                         "why": "Minimum loss reduction to split. 0 is the default; larger values prune splits that barely help."}
+  },
+  "gaussian_nb": {
+    "var_smoothing":    {"type": "float", "low": 1e-12, "high": 1e-3, "log": true,
+                         "why": "Variance floor added to every feature. Gaussian NB has no other hyperparameter; heavily skewed features such as distance can make the fitted variances unstable."}
+  },
+  "objectives": {
+    "cv_macro_f1": {"metric": "macro_f1", "direction": "maximize",
+                    "why": "Candidate-level macro F1 averaged over trip-grouped folds; insensitive to the positive/negative imbalance among candidates."},
+    "cv_top1":     {"metric": "top1_acc", "direction": "maximize",
+                    "why": "Observation-level Top-1 averaged over folds; matches the map-matching goal but is lenient when several candidates are labelled positive."},
+    "cv_log_loss": {"metric": "log_loss", "direction": "minimize",
+                    "why": "Probability quality, which is what the HMM emission model uses. Chosen as the default objective after the baseline runs showed that macro F1 at a fixed 0.5 threshold is misleading here: each GPS point has ~12 candidates and exactly one positive (candidate positive rate ~7%), and a calibrated Gaussian NB predicted no positives at all (macro F1 0.48) although its log loss improved and its ranking (AUC) was unchanged. Decided before any tuning run, using training-partition CV and student-test baselines only."}
+  }
+}

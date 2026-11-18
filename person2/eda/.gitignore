@@ -1,0 +1,3 @@
+__pycache__/
+# the 6.9 MB map of the problem trip is regenerable: python eda/make_eda_plots.py --map train 00000054
+outputs/folium_train_00000054.html

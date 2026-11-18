@@ -1,0 +1,19 @@
+{
+  "label": "xgboost (tuned)",
+  "params": {
+    "n_estimators": 450,
+    "max_depth": 6,
+    "learning_rate": 0.010188264879353223,
+    "subsample": 0.5229934638995568,
+    "colsample_bytree": 0.9505987184492066,
+    "min_child_weight": 1.2506071764134843,
+    "reg_lambda": 0.0109328837351381,
+    "gamma": 1.18353047747752
+  },
+  "n_rounds": 450,
+  "best_validation_round": 370,
+  "train_logloss_final": 0.11519446167178393,
+  "val_logloss_final": 0.13096739310688685,
+  "val_logloss_min": 0.13083874429675563,
+  "gap_final_val_minus_train": 0.015772931435102916
+}

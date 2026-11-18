@@ -1,0 +1,19 @@
+{
+  "label": "xgboost (untuned defaults)",
+  "params": {
+    "n_estimators": 300,
+    "max_depth": 6,
+    "learning_rate": 0.1,
+    "subsample": 0.8,
+    "colsample_bytree": 0.8,
+    "min_child_weight": 1,
+    "reg_lambda": 1.0,
+    "gamma": 0.0
+  },
+  "n_rounds": 300,
+  "best_validation_round": 47,
+  "train_logloss_final": 0.10908889373551256,
+  "val_logloss_final": 0.13492677764425431,
+  "val_logloss_min": 0.13051562151978433,
+  "gap_final_val_minus_train": 0.025837883908741754
+}
