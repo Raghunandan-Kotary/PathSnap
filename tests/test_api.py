@@ -82,6 +82,8 @@ def test_ground_truth_isolation(client):
     assert "reference_route" not in data
     assert "raw_route" not in data
     assert "gt_arcs" not in data
+    # The map sent to the UI must not draw the reference route either
+    assert "Reference route" not in (data.get("map_html") or "")
 
 def test_predict_invalid_trip_returns_404(client):
     """Verifies that non-existent trips trigger HTTP 404."""

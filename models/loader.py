@@ -27,6 +27,11 @@ class ModelWrapper:
         if not path.exists():
             raise FileNotFoundError(f"Model artifact not found at {path}")
         model_obj = joblib.load(path)
+        # person2/models/save_final.py writes a bundle {"model", "feature_cols", ...};
+        # without unwrapping it, predict_proba below finds no estimator and
+        # silently returns 0.5 for every candidate.
+        if isinstance(model_obj, dict) and "model" in model_obj:
+            return cls(model_obj["model"], model_obj.get("feature_cols"))
         return cls(model_obj)
 
     def predict_proba(self, df: pd.DataFrame) -> np.ndarray:
