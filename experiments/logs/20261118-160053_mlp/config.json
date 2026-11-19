@@ -1,0 +1,72 @@
+{
+  "run_id": "20261118-160053_mlp",
+  "timestamp": "2026-11-19T09:34:30",
+  "smoke": false,
+  "tag": "",
+  "role": "baseline",
+  "model": "mlp",
+  "family": "Neural network (shallow MLP)",
+  "params": {
+    "hidden_layer_sizes": [
+      64,
+      32
+    ],
+    "activation": "relu",
+    "max_iter": 100,
+    "early_stopping": true,
+    "validation_fraction": 0.1
+  },
+  "calibration": null,
+  "threshold": 0.5,
+  "seed": 42,
+  "cv_folds": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "n_train_trips": 80,
+  "n_test_trips": 10,
+  "n_train_candidates": 2546809,
+  "n_test_candidates": 276962,
+  "feature_cols": [
+    "feat_dist_to_arc",
+    "feat_arc_length",
+    "feat_heading_diff",
+    "feat_speed",
+    "feat_time_gap"
+  ],
+  "label_stats": {
+    "student_test": {
+      "candidates": 276962,
+      "positive_rate": 0.06742441201320036,
+      "observations_with_candidates": 19160,
+      "mean_candidates_per_obs": 14.455219206680585,
+      "mean_positives_per_obs": 0.9746346555323591,
+      "obs_with_zero_positive": 0.025365344467640917,
+      "obs_with_one_positive": 0.9746346555323591,
+      "obs_with_2plus_positive": 0.0
+    },
+    "train": {
+      "candidates": 2546809,
+      "positive_rate": 0.07465970161091783,
+      "observations_with_candidates": 208417,
+      "mean_candidates_per_obs": 12.219775738063595,
+      "mean_positives_per_obs": 0.912324810356161,
+      "obs_with_zero_positive": 0.08767518964383904,
+      "obs_with_one_positive": 0.912324810356161,
+      "obs_with_2plus_positive": 0.0
+    }
+  },
+  "table_path": "experiments/team_table/candidates_features.parquet",
+  "table_sha1": "060da7101d55b54bd8ba4a5d0b560d0a584d4de6",
+  "versions": {
+    "python": "3.12.10",
+    "numpy": "2.5.0",
+    "pandas": "2.3.3",
+    "sklearn": "1.9.0",
+    "xgboost": "3.4.1",
+    "lightgbm": "4.7.0"
+  }
+}
